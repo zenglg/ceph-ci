@@ -12,7 +12,6 @@
  *
  */
 
-#include "include/compat.h"
 #include "common/Thread.h"
 #include "common/code_environment.h"
 #include "common/debug.h"
