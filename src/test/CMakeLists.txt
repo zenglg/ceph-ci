@@ -879,5 +879,14 @@ target_link_libraries(unittest_subprocess global)
 add_executable(unittest_pageset test_pageset.cc)
 add_ceph_unittest(unittest_pageset ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_pageset)
 
-#make check ends here
+# unittest_direct_messenger
+add_executable(unittest_direct_messenger EXCLUDE_FROM_ALL
+  messenger/test_direct_messenger.cc)
+target_link_libraries(unittest_direct_messenger global boost_system)
+add_ceph_unittest(unittest_direct_messenger ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_direct_messenger)
 
+set_target_properties(unittest_direct_messenger
+  PROPERTIES COMPILE_FLAGS ${UNITTEST_CXX_FLAGS}
+)
+
+#make check ends here
