@@ -18,6 +18,12 @@ target_link_libraries(simple_client
   ${CMAKE_DL_LIBS}
   )
 
+add_executable(time_direct EXCLUDE_FROM_ALL
+  time_direct.cc)
+target_link_libraries(time_direct global boost_system
+  ${UNITTEST_LIBS}
+  ${EXTRALIBS})
+
 if(HAVE_XIO)
   add_executable(xio_server
     xio_server.cc
