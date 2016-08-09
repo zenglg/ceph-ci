@@ -1620,7 +1620,9 @@ int match(const string& pattern, const string& input, uint32_t flag)
     string substr_pattern = pattern.substr(last_pos_pattern, cur_pos_pattern);
 
     int res;
-    if (flag & MATCH_POLICY_ACTION || flag & MATCH_POLICY_ARN) {
+    if (substr_pattern == "*") {
+      res = 1;
+    } else if (flag & MATCH_POLICY_ACTION || flag & MATCH_POLICY_ARN) {
       res = match_internal(substr_pattern, substr_input, &matchignorecase);
     } else {
       res = match_internal(substr_pattern, substr_input, &matchcase);
@@ -1631,7 +1633,7 @@ int match(const string& pattern, const string& input, uint32_t flag)
     if (cur_pos_pattern == string::npos && cur_pos_input == string::npos)
       return 1;
     else if ((cur_pos_pattern == string::npos && cur_pos_input != string::npos) ||
-             (cur_pos_pattern != string::npos && cur_pos_input == string::npos))
+	     (cur_pos_pattern != string::npos && cur_pos_input == string::npos))
       return 0;
 
     last_pos_pattern = cur_pos_pattern + 1;

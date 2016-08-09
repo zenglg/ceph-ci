@@ -1348,11 +1348,13 @@ namespace rgw {
     namespace s3 {
       class RGWGetPolicyV2Extractor;
     }
+    class Completer;
   }
   namespace io {
     class BasicClient;
   }
 }
+
 
 struct req_info {
   RGWEnv *env;
