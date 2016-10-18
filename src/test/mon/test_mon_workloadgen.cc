@@ -901,7 +901,7 @@ class OSDStub : public TestStub
 
   bool ms_handle_reset(Connection *con) {
     dout(1) << __func__ << dendl;
-    OSD::Session *session = (OSD::Session *)con->get_priv();
+    Session *session = (Session *)con->get_priv();
     if (!session)
       return false;
     session->put();
