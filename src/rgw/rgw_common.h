@@ -446,7 +446,8 @@ enum RGWOpType {
   RGW_OP_GET_INFO,
 
   /* rgw specific */
-  RGW_OP_ADMIN_SET_METADATA
+  RGW_OP_ADMIN_SET_METADATA,
+  RGW_OP_BULK_UPLOAD
 };
 
 class RGWAccessControlPolicy;

@@ -1404,6 +1404,23 @@ void RGWBulkDelete_ObjStore_SWIFT::send_response()
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
+
+std::unique_ptr<RGWBulkUploadOp::StreamGetter>
+RGWBulkUploadOp_ObjStore_SWIFT::create_stream()
+{
+  return nullptr;
+}
+
+void RGWBulkUploadOp_ObjStore_SWIFT::send_response()
+{
+  set_req_state_err(s, op_ret);
+  dump_errno(s);
+  end_header(s, this /* RGWOp */, nullptr /* contype */,
+             CHUNKED_TRANSFER_ENCODING);
+  rgw_flush_formatter_and_reset(s, s->formatter);
+}
+
+
 void RGWGetCrossDomainPolicy_ObjStore_SWIFT::send_response()
 {
   set_req_state_err(s, op_ret);
@@ -1569,6 +1586,14 @@ RGWOp *RGWHandler_REST_Service_SWIFT::op_get()
 RGWOp *RGWHandler_REST_Service_SWIFT::op_head()
 {
   return new RGWStatAccount_ObjStore_SWIFT;
+}
+
+RGWOp *RGWHandler_REST_Service_SWIFT::op_put()
+{
+  if (s->info.args.exists("extract-archive")) {
+    return new RGWBulkUploadOp_ObjStore_SWIFT;
+  }
+  return nullptr;
 }
 
 RGWOp *RGWHandler_REST_Service_SWIFT::op_post()
