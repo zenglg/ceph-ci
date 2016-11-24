@@ -2200,6 +2200,7 @@ private:
   void update_store_with_options();
 
 public:
+  static int _simplify_past_intervals(map<epoch_t,pg_interval_t> &pi);
   static int _prepare_write_info(
     map<string,bufferlist> *km,
     epoch_t epoch,
