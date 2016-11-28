@@ -333,7 +333,7 @@ int RGWLC::bucket_lc_process(string& shard_id)
           RGWObjectCtx rctx(store);
           rgw_obj obj(bucket_info.bucket, key);
           RGWObjState *state;
-          int ret = store->get_obj_state(&rctx, obj, &state, false);
+          int ret = store->get_obj_state(&rctx, bucket_info, obj, &state, false);
           if (ret < 0) {
             return ret;
           }
@@ -383,7 +383,7 @@ int RGWLC::bucket_lc_process(string& shard_id)
             RGWObjectCtx rctx(store);
             rgw_obj obj(bucket_info.bucket, key);
             RGWObjState *state;
-            int ret = store->get_obj_state(&rctx, obj, &state, false);
+            int ret = store->get_obj_state(&rctx, bucket_info, obj, &state, false);
             if (ret < 0) {
               return ret;
             }
