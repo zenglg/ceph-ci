@@ -1057,11 +1057,22 @@ uint64_t librados::AioCompletion::AioCompletion::get_version64()
   return c->get_version();
 }
 
+void librados::AioCompletion::AioCompletion::get()
+{
+  AioCompletionImpl *c = (AioCompletionImpl *)pc;
+  c->get();
+}
+
+void librados::AioCompletion::AioCompletion::put()
+{
+  AioCompletionImpl *c = (AioCompletionImpl *)pc;
+  c->put();
+}
+
 void librados::AioCompletion::AioCompletion::release()
 {
   AioCompletionImpl *c = (AioCompletionImpl *)pc;
   c->release();
-  delete this;
 }
 
 ///////////////////////////// IoCtx //////////////////////////////
@@ -2652,7 +2663,7 @@ librados::PoolAsyncCompletion *librados::Rados::pool_async_create_completion()
 librados::AioCompletion *librados::Rados::aio_create_completion()
 {
   AioCompletionImpl *c = new AioCompletionImpl;
-  return new AioCompletion(c);
+  return &(c->c);
 }
 
 librados::AioCompletion *librados::Rados::aio_create_completion(void *cb_arg,
@@ -2662,7 +2673,7 @@ librados::AioCompletion *librados::Rados::aio_create_completion(void *cb_arg,
   AioCompletionImpl *c;
   int r = rados_aio_create_completion(cb_arg, cb_complete, cb_safe, (void**)&c);
   assert(r == 0);
-  return new AioCompletion(c);
+  return &(c->c);
 }
 
 librados::ObjectOperation::ObjectOperation()
