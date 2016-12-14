@@ -6,7 +6,6 @@
 
 #define TIME_BUF_SIZE 128
 
-#include <boost/container/flat_set.hpp>
 #include "common/sstring.hh"
 
 #include "common/ceph_json.h"
@@ -441,7 +440,7 @@ class RGWLibIO;
 
 class RGWREST {
   using x_header = basic_sstring<char, uint16_t, 32>;
-  boost::container::flat_set<x_header> x_headers;
+  std::set<x_header> x_headers;
   RGWRESTMgr mgr;
 
   static int preprocess(struct req_state *s, RGWClientIO *sio);
