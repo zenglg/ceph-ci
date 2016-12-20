@@ -2207,7 +2207,7 @@ public:
   PGLog::IndexedLog projected_log;
   bool check_in_progress_op(
     const osd_reqid_t &r,
-    eversion_t *replay_version,
+    eversion_t *version,
     version_t *user_version,
     int *return_code) const;
   eversion_t projected_last_update;
