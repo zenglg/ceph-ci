@@ -1,3 +1,9 @@
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// vim: ts=8 sw=2 smarttab
+
+#ifndef LIBCEPHD_H
+#define LIBCEPHD_H
+
 #pragma once
 
 #ifdef __cplusplus
@@ -79,3 +85,5 @@ CEPH_LIBCEPHD_API int cephd_run_osd(int argc, const char **argv);
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* LIBCEPHD_H */
