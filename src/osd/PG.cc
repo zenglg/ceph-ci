@@ -7316,9 +7316,7 @@ PG::RecoveryState::GetInfo::GetInfo(my_context ctx)
 
   pg->reset_min_peer_features();
   get_infos();
-  if (prior_set->pg_down) {
-    post_event(IsDown());
-  } else if (peer_info_requested.empty()) {
+  if (peer_info_requested.empty() && !prior_set->pg_down) {
     post_event(GotInfo());
   }
 }
@@ -7448,7 +7446,8 @@ boost::statechart::result PG::RecoveryState::GetInfo::react(const MNotifyRec& in
 	  }
 	  if (!any_up_complete_now && any_down_now) {
 	    dout(10) << " no osds up+complete from interval " << interval << dendl;
-	    post_event(IsDown());
+	    pg->state_set(PG_STATE_DOWN);
+            pg->publish_stats_to_osd();
 	    return discard_event();
 	  }
 	  break;
@@ -7689,36 +7688,6 @@ void PG::RecoveryState::WaitActingChange::exit()
   PG *pg = context< RecoveryMachine >().pg;
   utime_t dur = ceph_clock_now(pg->cct) - enter_time;
   pg->osd->recoverystate_perf->tinc(rs_waitactingchange_latency, dur);
-}
-
-/*------Down--------*/
-PG::RecoveryState::Down::Down(my_context ctx)
-  : my_base(ctx),
-    NamedState(context< RecoveryMachine >().pg->cct, "Started/Primary/Peering/Down")
-{
-  context< RecoveryMachine >().log_enter(state_name);
-  PG *pg = context< RecoveryMachine >().pg;
-
-  pg->state_clear(PG_STATE_PEERING);
-  pg->state_set(PG_STATE_DOWN);
-
-  unique_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
-  assert(pg->blocked_by.empty());
-  pg->blocked_by.insert(prior_set->down.begin(), prior_set->down.end());
-  pg->publish_stats_to_osd();
-}
-
-void PG::RecoveryState::Down::exit()
-{
-  context< RecoveryMachine >().log_exit(state_name, enter_time);
-  PG *pg = context< RecoveryMachine >().pg;
-
-  pg->state_clear(PG_STATE_DOWN);
-  utime_t dur = ceph_clock_now(pg->cct) - enter_time;
-  pg->osd->recoverystate_perf->tinc(rs_down_latency, dur);
-
-  pg->blocked_by.clear();
-  pg->publish_stats_to_osd();
 }
 
 /*------Incomplete--------*/
