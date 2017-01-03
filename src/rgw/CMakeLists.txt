@@ -29,6 +29,7 @@ set(rgw_a_srcs
   rgw_acl.cc
   rgw_acl_s3.cc
   rgw_acl_swift.cc
+  rgw_aio.cc
   rgw_auth.cc
   rgw_auth_s3.cc
   rgw_basic_types.cc
