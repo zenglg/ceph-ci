@@ -115,6 +115,12 @@ static string RGW_DEFAULT_ZONEGROUP_ROOT_POOL = "rgw.root";
 static string RGW_DEFAULT_REALM_ROOT_POOL = "rgw.root";
 static string RGW_DEFAULT_PERIOD_ROOT_POOL = "rgw.root";
 
+
+namespace rgw {
+	void aiocompletion_exref(AioCompletion* c);
+	void aiocompletion_unref(AioCompletion* c);
+}
+
 #define RGW_STATELOG_OBJ_PREFIX "statelog."
 
 #define dout_subsys ceph_subsys_rgw
@@ -9642,6 +9648,7 @@ struct get_obj_data : public RefCountedObject {
 
     lock.Lock();
     completion_map.erase(cur_ofs);
+    rgw::aiocompletion_unref(c); /* return exref now c is unreachable */
 
     if (completion_map.empty()) {
       *done = true;
@@ -9669,8 +9676,12 @@ struct get_obj_data : public RefCountedObject {
     struct get_obj_aio_data *paio_data =  &aio_data.back(); /* last element */
 
     librados::AioCompletion *c = librados::Rados::aio_create_completion((void *)paio_data, NULL, _get_obj_aio_completion_cb);
-    completion_map[ofs] = c;
 
+    /* XXX an extra ref to deal with lack of refcnt control over internal
+     * AioCompletionImpl */
+    rgw::aiocompletion_exref(c);
+
+    completion_map[ofs] = c;
     *pc = c;
 
     /* we have a reference per IO, plus one reference for the calling function.
