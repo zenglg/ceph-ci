@@ -3281,7 +3281,7 @@ PG *OSD::_create_lock_pg(
   vector<int>& up, int up_primary,
   vector<int>& acting, int acting_primary,
   pg_history_t history,
-  const pg_interval_map_t& pi,
+  const PastIntervals& pi,
   ObjectStore::Transaction& t)
 {
   assert(osd_lock.is_locked());
@@ -3530,23 +3530,36 @@ void OSD::build_past_intervals_parallel()
         ++i) {
       PG *pg = i->second;
 
-      epoch_t start, end;
-      if (!pg->_calc_past_interval_range(&start, &end, superblock.oldest_map)) {
-        if (pg->info.history.same_interval_since == 0)
-          pg->info.history.same_interval_since = end;
-        continue;
+      auto rpib = pg->get_required_past_interval_bounds(
+	pg->info,
+	superblock.oldest_map);
+      if (rpib.first == rpib.second && pg->past_intervals.empty()) {
+        if (pg->info.history.same_interval_since == 0) {
+          pg->info.history.same_interval_since = rpib.second;
+	}
+	continue;
+      } else {
+	auto apib = pg->past_intervals.get_bounds();
+	if (rpib.second == apib.second &&
+	    apib.first.first <= rpib.first) {
+	  if (pg->info.history.same_interval_since == 0) {
+	    pg->info.history.same_interval_since = rpib.second;
+	  }
+	  continue;
+	}
       }
 
-      dout(10) << pg->info.pgid << " needs " << start << "-" << end << dendl;
+      dout(10) << pg->info.pgid << " needs " << rpib.first << "-"
+	       << rpib.second << dendl;
       pistate& p = pis[pg];
-      p.start = start;
-      p.end = end;
+      p.start = rpib.first;
+      p.end = rpib.second;
       p.same_interval_since = 0;
 
-      if (start < cur_epoch)
-        cur_epoch = start;
-      if (end > end_epoch)
-        end_epoch = end;
+      if (rpib.first < cur_epoch)
+        cur_epoch = rpib.first;
+      if (rpib.second > end_epoch)
+        end_epoch = rpib.second;
     }
   }
   if (pis.empty()) {
@@ -3595,7 +3608,7 @@ void OSD::build_past_intervals_parallel()
       boost::scoped_ptr<IsPGRecoverablePredicate> recoverable(
         pg->get_is_recoverable_predicate());
       std::stringstream debug;
-      bool new_interval = pg_interval_t::check_new_interval(
+      bool new_interval = PastIntervals::check_new_interval(
 	p.primary,
 	primary,
 	p.old_acting, acting,
@@ -3669,7 +3682,7 @@ void OSD::build_past_intervals_parallel()
 void OSD::handle_pg_peering_evt(
   spg_t pgid,
   const pg_history_t& orig_history,
-  const pg_interval_map_t& pi,
+  const PastIntervals& pi,
   epoch_t epoch,
   PG::CephPeeringEvtRef evt)
 {
@@ -3751,7 +3764,7 @@ void OSD::handle_pg_peering_evt(
       vector<int> old_acting = old_pg_state->acting;
       int old_primary = old_pg_state->primary.osd;
       pg_history_t old_history = old_pg_state->info.history;
-      pg_interval_map_t old_past_intervals = old_pg_state->past_intervals;
+      PastIntervals old_past_intervals = old_pg_state->past_intervals;
       old_pg_state->unlock();
       pg = _create_lock_pg(
 	old_osd_map,
@@ -3787,7 +3800,7 @@ void OSD::handle_pg_peering_evt(
       vector<int> old_acting = old_pg_state->acting;
       int old_primary = old_pg_state->primary.osd;
       pg_history_t old_history = old_pg_state->info.history;
-      pg_interval_map_t old_past_intervals = old_pg_state->past_intervals;
+      PastIntervals old_past_intervals = old_pg_state->past_intervals;
       old_pg_state->unlock();
       PG *parent = _create_lock_pg(
 	old_osd_map,
@@ -7849,7 +7862,7 @@ void OSD::handle_pg_create(OpRequestRef op)
     bool mapped = osdmap->get_primary_shard(on, &pgid);
     assert(mapped);
 
-    pg_interval_map_t pi;
+    PastIntervals pi;
     pg_history_t history;
     history.epoch_created = created;
     history.last_scrub_stamp = ci->second;
@@ -7906,10 +7919,10 @@ PG::RecoveryCtx OSD::create_context()
   C_Contexts *on_safe = new C_Contexts(cct);
   map<int, map<spg_t,pg_query_t> > *query_map =
     new map<int, map<spg_t, pg_query_t> >;
-  map<int,vector<pair<pg_notify_t, pg_interval_map_t> > > *notify_list =
-    new map<int, vector<pair<pg_notify_t, pg_interval_map_t> > >;
-  map<int,vector<pair<pg_notify_t, pg_interval_map_t> > > *info_map =
-    new map<int,vector<pair<pg_notify_t, pg_interval_map_t> > >;
+  map<int,vector<pair<pg_notify_t, PastIntervals> > > *notify_list =
+    new map<int, vector<pair<pg_notify_t, PastIntervals> > >;
+  map<int,vector<pair<pg_notify_t, PastIntervals> > > *info_map =
+    new map<int,vector<pair<pg_notify_t, PastIntervals> > >;
   PG::RecoveryCtx rctx(query_map, info_map, notify_list,
 		       on_applied, on_safe, t);
   return rctx;
@@ -7991,11 +8004,11 @@ void OSD::dispatch_context(PG::RecoveryCtx &ctx, PG *pg, OSDMapRef curmap,
  */
 
 void OSD::do_notifies(
-  map<int,vector<pair<pg_notify_t,pg_interval_map_t> > >& notify_list,
+  map<int,vector<pair<pg_notify_t,PastIntervals> > >& notify_list,
   OSDMapRef curmap)
 {
   for (map<int,
-	   vector<pair<pg_notify_t,pg_interval_map_t> > >::iterator it =
+	   vector<pair<pg_notify_t,PastIntervals> > >::iterator it =
 	 notify_list.begin();
        it != notify_list.end();
        ++it) {
@@ -8050,11 +8063,11 @@ void OSD::do_queries(map<int, map<spg_t,pg_query_t> >& query_map,
 
 
 void OSD::do_infos(map<int,
-		       vector<pair<pg_notify_t, pg_interval_map_t> > >& info_map,
+		       vector<pair<pg_notify_t, PastIntervals> > >& info_map,
 		   OSDMapRef curmap)
 {
   for (map<int,
-	   vector<pair<pg_notify_t, pg_interval_map_t> > >::iterator p =
+	   vector<pair<pg_notify_t, PastIntervals> > >::iterator p =
 	 info_map.begin();
        p != info_map.end();
        ++p) {
@@ -8062,7 +8075,7 @@ void OSD::do_infos(map<int,
       dout(20) << __func__ << " skipping down osd." << p->first << dendl;
       continue;
     }
-    for (vector<pair<pg_notify_t,pg_interval_map_t> >::iterator i = p->second.begin();
+    for (vector<pair<pg_notify_t,PastIntervals> >::iterator i = p->second.begin();
 	 i != p->second.end();
 	 ++i) {
       dout(20) << __func__ << " sending info " << i->first.info
@@ -8364,7 +8377,7 @@ void OSD::handle_pg_query(OpRequestRef op)
 
   op->mark_started();
 
-  map< int, vector<pair<pg_notify_t, pg_interval_map_t> > > notify_list;
+  map< int, vector<pair<pg_notify_t, PastIntervals> > > notify_list;
 
   for (auto it = m->pg_list.begin();
        it != m->pg_list.end();
@@ -8448,7 +8461,7 @@ void OSD::handle_pg_query(OpRequestRef op)
 	    it->second.epoch_sent,
 	    osdmap->get_epoch(),
 	    empty),
-	  pg_interval_map_t()));
+	  PastIntervals()));
     }
   }
   do_notifies(notify_list, osdmap);

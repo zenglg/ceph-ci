@@ -2063,7 +2063,7 @@ protected:
     vector<int>& up, int up_primary,
     vector<int>& acting, int acting_primary,
     pg_history_t history,
-    const pg_interval_map_t& pi,
+    const PastIntervals& pi,
     ObjectStore::Transaction& t);
   PG   *_lookup_qlock_pg(spg_t pgid);
 
@@ -2074,7 +2074,7 @@ protected:
   void handle_pg_peering_evt(
     spg_t pgid,
     const pg_history_t& orig_history,
-    const pg_interval_map_t& pi,
+    const PastIntervals& pi,
     epoch_t epoch,
     PG::CephPeeringEvtRef evt);
   
@@ -2221,13 +2221,13 @@ protected:
   void dispatch_context_transaction(PG::RecoveryCtx &ctx, PG *pg,
                                     ThreadPool::TPHandle *handle = NULL);
   void do_notifies(map<int,
-		       vector<pair<pg_notify_t, pg_interval_map_t> > >&
+		       vector<pair<pg_notify_t, PastIntervals> > >&
 		       notify_list,
 		   OSDMapRef map);
   void do_queries(map<int, map<spg_t,pg_query_t> >& query_map,
 		  OSDMapRef map);
   void do_infos(map<int,
-		    vector<pair<pg_notify_t, pg_interval_map_t> > >& info_map,
+		    vector<pair<pg_notify_t, PastIntervals> > >& info_map,
 		OSDMapRef map);
 
   bool require_mon_peer(const Message *m);
