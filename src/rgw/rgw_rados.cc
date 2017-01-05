@@ -1,4 +1,3 @@
-
 // -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 
@@ -9920,8 +9919,9 @@ int RGWRados::get_obj_iterate_cb(RGWObjectCtx *ctx, RGWObjState *astate,
 
   // Flush data to client if there is any
   r = flush_read_list(d);
-  if (r < 0)
+  if (r < 0) {
     return r;
+  }
 
   return 0;
 
@@ -9937,9 +9937,12 @@ int RGWRados::Object::Read::iterate(int64_t ofs, int64_t end, RGWGetDataCB *cb)
 {
   RGWRados *store = source->get_store();
   CephContext *cct = store->ctx();
+  bool done = false;
 
   struct get_obj_data *data = new get_obj_data(cct);
-  bool done = false;
+
+  data->get(); // extra ref
+  cb->set_op_data(data); // and save it
 
   RGWObjectCtx& obj_ctx = source->get_ctx();
 
@@ -9980,7 +9983,7 @@ int RGWRados::iterate_obj(RGWObjectCtx& obj_ctx, rgw_obj& obj,
 	                  void *arg)
 {
   rgw_bucket bucket;
-  rgw_obj read_obj = obj;
+  rgw_obj read_obj = obj; // XXX we wanted to make a copy?
   uint64_t read_ofs = ofs;
   uint64_t len;
   bool reading_from_head = true;
@@ -13011,5 +13014,11 @@ int rgw_compression_info_from_attrset(map<string, bufferlist>& attrs, bool& need
   } else {
     need_decompress = false;
     return 0;
+  }
+}
+
+RGWGetDataCB::~RGWGetDataCB() {
+  if (op_data) {
+    op_data->put();
   }
 }
