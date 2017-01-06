@@ -9918,6 +9918,11 @@ int RGWRados::get_obj_iterate_cb(RGWObjectCtx *ctx, RGWObjState *astate,
 
 #if 0
   ldout(cct, 20) << "rados->aio_operate r=" << r << " bl.length=" << pbl->length() << dendl;
+#else
+  ldout(cct, 0) << "1 rados->aio_operate r=" << dendl;
+  ldout(cct, 0) << r << dendl;
+  ldout(cct, 0) << " bl.length=" << pbl->length() << dendl;
+  ldout(cct, 0) << "2 rados->aio_operate r=" << dendl;
 #endif
 
   // Flush data to client if there is any
