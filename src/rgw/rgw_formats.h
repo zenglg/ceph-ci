@@ -57,6 +57,7 @@ private:
   std::list<struct plain_stack_entry> stack;
   size_t min_stack_level;
   bool use_kv;
+  mutable bool get_len_called;
 };
 
 

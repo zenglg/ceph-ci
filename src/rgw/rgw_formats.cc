@@ -44,7 +44,9 @@ void RGWFormatter_Plain::flush(ostream& os)
     return;
 
   if (len) {
-    os << buf << "\n";
+    os << buf;
+    if (!get_len_called)
+	os << '\n';
     os.flush();
   }
 
@@ -57,6 +59,7 @@ void RGWFormatter_Plain::reset_buf()
   buf = NULL;
   len = 0;
   max_len = 0;
+  get_len_called = false;
 }
 
 void RGWFormatter_Plain::reset()
@@ -175,6 +178,7 @@ void RGWFormatter_Plain::dump_format_va(const char *name, const char *ns, bool q
 
 int RGWFormatter_Plain::get_len() const
 {
+  get_len_called = true;
   // don't include null termination in length
   return (len ? len - 1 : 0);
 }
