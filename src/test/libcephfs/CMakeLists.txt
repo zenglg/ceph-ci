@@ -9,8 +9,9 @@ if(${WITH_CEPHFS})
     acl.cc
     main.cc
   )
-  set_target_properties(ceph_test_libcephfs PROPERTIES COMPILE_FLAGS
-    ${UNITTEST_CXX_FLAGS})
+  set_target_properties(ceph_test_libcephfs PROPERTIES
+    COMPILE_FLAGS ${UNITTEST_CXX_FLAGS}
+    INSTALL_RPATH "")
   target_link_libraries(ceph_test_libcephfs
     cephfs
     ${UNITTEST_LIBS}

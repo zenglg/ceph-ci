@@ -12,6 +12,8 @@ install(TARGETS rados DESTINATION bin)
 if(WITH_TESTS)
 add_executable(ceph_scratchtool scratchtool.c)
 target_link_libraries(ceph_scratchtool librados global)
+set_target_properties(ceph_scratchtool PROPERTIES
+  INSTALL_RPATH "")
 install(TARGETS ceph_scratchtool DESTINATION bin)
 
 add_executable(ceph_scratchtoolpp scratchtoolpp.cc)
@@ -20,6 +22,8 @@ install(TARGETS ceph_scratchtoolpp DESTINATION bin)
 
 add_executable(ceph_radosacl radosacl.cc)
 target_link_libraries(ceph_radosacl librados global)
+set_target_properties(ceph_radosacl PROPERTIES
+  INSTALL_RPATH "")
 install(TARGETS ceph_radosacl DESTINATION bin)
 
 add_executable(ceph-osdomap-tool ceph_osdomap_tool.cc)
