@@ -5531,7 +5531,7 @@ void RGWGetObjLayout::execute()
     return;
   }
 
-  head_obj = stat_op.state.head_obj;
+  head_obj = stat_op.state.obj;
 
   op_ret = target->get_manifest(&manifest);
 }
