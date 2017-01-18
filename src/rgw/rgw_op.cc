@@ -508,7 +508,8 @@ int rgw_build_object_policies(RGWRados *store, struct req_state *s,
     }
     s->object_acl = new RGWAccessControlPolicy(s->cct);
 
-    rgw_obj obj(s->bucket, s->object);
+    rgw_obj obj(s->bucket, s->object.name);
+    obj.set_instance(s->object.instance);
       
     store->set_atomic(s->obj_ctx, obj);
     if (prefetch_data) {
@@ -5500,7 +5501,8 @@ void RGWSetAttrs::execute()
   if (op_ret < 0)
     return;
 
-  rgw_obj obj(s->bucket, s->object);
+  rgw_obj obj(s->bucket, s->object.name);
+  obj.set_instance(s->object.instance);
 
   store->set_atomic(s->obj_ctx, obj);
 
@@ -5522,8 +5524,9 @@ void RGWGetObjLayout::pre_exec()
 
 void RGWGetObjLayout::execute()
 {
-  rgw_obj obj(s->bucket, s->object);
-  target = new RGWRados::Object(store, s->bucket_info, *static_cast<RGWObjectCtx *>(s->obj_ctx), rgw_obj(s->bucket, s->object));
+  rgw_obj obj(s->bucket, s->object.name);
+  obj.set_instance(s->object.instance);
+  target = new RGWRados::Object(store, s->bucket_info, *static_cast<RGWObjectCtx *>(s->obj_ctx), obj);
   RGWRados::Object::Read stat_op(target);
 
   op_ret = stat_op.prepare();
