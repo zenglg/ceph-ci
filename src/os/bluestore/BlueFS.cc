@@ -179,6 +179,7 @@ int BlueFS::reclaim_blocks(unsigned id, uint64_t want,
   assert(r == 0); // caller shouldn't ask for more than they can get
   int64_t got = alloc[id]->allocate(want, g_conf->bluefs_alloc_size, 0,
 				    extents);
+  dout(20) << __func__ << " got " << got << dendl;
   if (got <= 0) {
     derr << __func__ << " failed to allocate space to return to bluestore"
 	 << dendl;

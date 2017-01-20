@@ -81,6 +81,7 @@ int BitMapAllocator::reserve(uint64_t need)
   int nblks = need / m_block_size; // apply floor
   assert(!(need % m_block_size));
   dout(10) << __func__ << " instance " << (uint64_t) this
+	   << " need " << need << " nblks " << nblks
            << " num_used " << m_bit_alloc->get_used_blocks()
            << " total " << m_bit_alloc->total_blocks()
            << dendl;
@@ -97,7 +98,7 @@ void BitMapAllocator::unreserve(uint64_t unused)
   assert(!(unused % m_block_size));
 
   dout(10) << __func__ << " instance " << (uint64_t) this
-           << " unused " << nblks
+	   << " " << unused << " nblks " << nblks
            << " num used " << m_bit_alloc->get_used_blocks()
            << " total " << m_bit_alloc->total_blocks()
            << dendl;
