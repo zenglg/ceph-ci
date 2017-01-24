@@ -324,8 +324,7 @@ INSTANTIATE_TEST_CASE_P(
   ::testing::Values(
     "zlib/isal",
     "zlib/noisal",
-    "snappy",
-    "zstd"));
+    "snappy"));
 
 TEST(ZlibCompressor, zlib_isal_compatibility)
 {
