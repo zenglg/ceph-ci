@@ -1,0 +1,110 @@
+archive_path: /home/teuthworker/archive/teuthology-2017-01-19_11:05:02-rgw-kraken-distro-basic-smithi/729619
+branch: kraken
+description: rgw/verify/{clusters/fixed-2.yaml frontend/apache.yaml fs/xfs.yaml msgr-failures/few.yaml
+  objectstore/filestore.yaml overrides.yaml rgw_pool_type/ec.yaml tasks/rgw_s3tests.yaml
+  validater/valgrind.yaml}
+email: ceph-qa@ceph.com
+job_id: '729619'
+kernel:
+  kdb: true
+  sha1: distro
+last_in_suite: false
+machine_type: smithi
+name: teuthology-2017-01-19_11:05:02-rgw-kraken-distro-basic-smithi
+nuke-on-error: true
+os_type: centos
+overrides:
+  admin_socket:
+    branch: kraken
+  ceph:
+    conf:
+      client:
+        debug rgw: 20
+        rgw compression type: random
+        rgw lc debug interval: 10
+      global:
+        ms inject socket failures: 5000
+        osd heartbeat grace: 40
+        osd_max_pg_log_entries: 10
+        osd_min_pg_log_entries: 10
+      mon:
+        debug mon: 20
+        debug ms: 1
+        debug paxos: 20
+      osd:
+        debug filestore: 20
+        debug journal: 20
+        debug ms: 1
+        debug osd: 25
+        osd objectstore: filestore
+        osd sloppy crc: true
+    fs: xfs
+    log-whitelist:
+    - slow request
+    sha1: 552d3185feaab665e5ebfa8f5e571bfd8eb9e15e
+    valgrind:
+      mds:
+      - --tool=memcheck
+      mon:
+      - --tool=memcheck
+      - --leak-check=full
+      - --show-reachable=yes
+      osd:
+      - --tool=memcheck
+  ceph-deploy:
+    conf:
+      client:
+        log file: /var/log/ceph/ceph-$name.$pid.log
+      mon:
+        osd default pool size: 2
+  install:
+    ceph:
+      debuginfo: true
+      flavor: notcmalloc
+      sha1: 552d3185feaab665e5ebfa8f5e571bfd8eb9e15e
+  rgw:
+    ec-data-pool: true
+    frontend: civetweb
+  s3tests:
+    slow_backend: true
+  workunit:
+    sha1: 552d3185feaab665e5ebfa8f5e571bfd8eb9e15e
+owner: scheduled_teuthology@teuthology
+priority: 1000
+repo: git://git.ceph.com/ceph.git
+roles:
+- - mon.a
+  - mon.c
+  - osd.0
+  - osd.1
+  - osd.2
+  - client.0
+- - mon.b
+  - osd.3
+  - osd.4
+  - osd.5
+  - client.1
+sha1: 552d3185feaab665e5ebfa8f5e571bfd8eb9e15e
+suite: rgw
+suite_branch: kraken
+suite_path: /home/teuthworker/src/git.ceph.com_ceph_kraken/qa
+suite_relpath: qa
+suite_repo: git://git.ceph.com/ceph.git
+suite_sha1: 552d3185feaab665e5ebfa8f5e571bfd8eb9e15e
+tasks:
+- install:
+    debuginfo: true
+    flavor: notcmalloc
+- ceph: null
+- rgw:
+    client.0:
+      valgrind:
+      - --tool=memcheck
+- s3tests:
+    client.0:
+      force-branch: ceph-master
+      rgw_server: client.0
+teuthology_branch: master
+tube: smithi
+verbose: true
+worker_log: /home/teuthworker/archive/worker_logs/worker.smithi.29803
