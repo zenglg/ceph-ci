@@ -233,7 +233,7 @@ public:
               bufferlist& data,
               RGWObjVersionTracker *objv_tracker,
               real_time set_mtime);
-  int put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl, off_t ofs, bool exclusive);
+  int put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl, bool exclusive);
 
   int get_system_obj(RGWObjectCtx& obj_ctx, RGWRados::SystemObject::Read::GetObjState& read_state,
                      RGWObjVersionTracker *objv_tracker, rgw_obj& obj,
@@ -424,31 +424,25 @@ int RGWCache<T>::put_system_obj_impl(rgw_obj& obj, uint64_t size, real_time *mti
 }
 
 template <class T>
-int RGWCache<T>::put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& data, off_t ofs, bool exclusive)
+int RGWCache<T>::put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& data, bool exclusive)
 {
   rgw_bucket bucket;
   string oid;
   normalize_bucket_and_obj(obj.bucket, obj.get_object(), bucket, oid);
   ObjectCacheInfo info;
-  bool cacheable = false;
-  if ((ofs == 0) || (ofs == -1)) {
-    cacheable = true;
-    info.data = data;
-    info.meta.size = data.length();
-    info.status = 0;
-    info.flags = CACHE_FLAG_DATA;
-  }
-  int ret = T::put_system_obj_data(ctx, obj, data, ofs, exclusive);
-  if (cacheable) {
-    string name = normal_name(bucket, oid);
-    if (ret >= 0) {
-      cache.put(name, info, NULL);
-      int r = distribute_cache(name, obj, info, UPDATE_OBJ);
-      if (r < 0)
-        mydout(0) << "ERROR: failed to distribute cache for " << obj << dendl;
-    } else {
-      cache.remove(name);
-    }
+  info.data = data;
+  info.meta.size = data.length();
+  info.status = 0;
+  info.flags = CACHE_FLAG_DATA;
+  int ret = T::put_system_obj_data(ctx, obj, data, exclusive);
+  string name = normal_name(bucket, oid);
+  if (ret >= 0) {
+    cache.put(name, info, NULL);
+    int r = distribute_cache(name, obj, info, UPDATE_OBJ);
+    if (r < 0)
+      mydout(0) << "ERROR: failed to distribute cache for " << obj << dendl;
+  } else {
+    cache.remove(name);
   }
 
   return ret;

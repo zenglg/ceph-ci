@@ -2281,7 +2281,7 @@ int RGWPutObjProcessor_Aio::handle_obj_data(rgw_obj& obj, bufferlist& bl, off_t 
 
   // For the first call pass -1 as the offset to
   // do a write_full.
-  return store->aio_put_obj_data(NULL, obj, bl, ((ofs != 0) ? ofs : -1), exclusive, phandle);
+  return store->aio_put_obj_data(obj, bl, ((ofs != 0) ? ofs : -1), exclusive, phandle);
 }
 
 struct put_obj_aio_info RGWPutObjProcessor_Aio::pop_pending()
@@ -5627,7 +5627,7 @@ read_omap:
   if (write_map) {
     bufferlist new_bl;
     ::encode(m, new_bl);
-    ret = put_system_obj_data(NULL, obj, new_bl, -1, false);
+    ret = put_system_obj_data(NULL, obj, new_bl, false);
     if (ret < 0) {
       ldout(cct, 0) << "WARNING: could not save avail pools map info ret=" << ret << dendl;
     }
@@ -5673,7 +5673,7 @@ int RGWRados::update_placement_map()
 
   bufferlist new_bl;
   ::encode(m, new_bl);
-  ret = put_system_obj_data(NULL, obj, new_bl, -1, false);
+  ret = put_system_obj_data(NULL, obj, new_bl, false);
   if (ret < 0) {
     ldout(cct, 0) << "WARNING: could not save avail pools map info ret=" << ret << dendl;
   }
@@ -6383,6 +6383,10 @@ int RGWRados::Object::Write::_do_write_meta(uint64_t size, uint64_t accounted_si
   op.mtime2(&mtime_ts);
 
   if (meta.data) {
+    uint64_t obj_size = meta.data->length();
+    op.set_alloc_hint2(obj_size, obj_size, ALLOC_HINT_FLAG_SEQUENTIAL_WRITE |
+                                           ALLOC_HINT_FLAG_SEQUENTIAL_READ |
+                                           ALLOC_HINT_FLAG_IMMUTABLE);
     /* if we want to overwrite the data, we also want to overwrite the
        xattrs, so just remove the object */
     op.write_full(*meta.data);
@@ -6601,6 +6605,7 @@ int RGWRados::put_system_obj_impl(rgw_obj& obj, uint64_t size, real_time *mtime,
 
   ObjectWriteOperation op;
 
+
   if (flags & PUT_OBJ_EXCL) {
     if (!(flags & PUT_OBJ_CREATE))
 	return -EINVAL;
@@ -6611,6 +6616,9 @@ int RGWRados::put_system_obj_impl(rgw_obj& obj, uint64_t size, real_time *mtime,
     op.create(false);
   }
 
+  op.set_alloc_hint2(data.length(), data.length(), ALLOC_HINT_FLAG_SEQUENTIAL_WRITE |
+                                                   ALLOC_HINT_FLAG_SEQUENTIAL_READ |
+                                                   ALLOC_HINT_FLAG_IMMUTABLE);
   if (objv_tracker) {
     objv_tracker->prepare_op_for_write(&op);
   }
@@ -6652,7 +6660,7 @@ int RGWRados::put_system_obj_impl(rgw_obj& obj, uint64_t size, real_time *mtime,
 }
 
 int RGWRados::put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl,
-			       off_t ofs, bool exclusive)
+			          bool exclusive)
 {
   rgw_rados_ref ref;
   rgw_bucket bucket;
@@ -6663,14 +6671,14 @@ int RGWRados::put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl,
 
   ObjectWriteOperation op;
 
-  if (exclusive)
+  if (exclusive) {
     op.create(true);
-
-  if (ofs == -1) {
-    op.write_full(bl);
-  } else {
-    op.write(ofs, bl);
   }
+
+  op.set_alloc_hint2(0, 0, ALLOC_HINT_FLAG_SEQUENTIAL_WRITE |
+                           ALLOC_HINT_FLAG_SEQUENTIAL_READ |
+                           ALLOC_HINT_FLAG_IMMUTABLE);
+  op.write_full(bl);
   r = ref.ioctx.operate(ref.oid, &op);
   if (r < 0)
     return r;
@@ -6689,19 +6697,7 @@ int RGWRados::put_system_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl,
  * attrs: all the given attrs are written to bucket storage for the given object
  * Returns: 0 on success, -ERR# otherwise.
  */
-int RGWRados::put_obj_data(void *ctx, rgw_obj& obj,
-			   const char *data, off_t ofs, size_t len, bool exclusive)
-{
-  void *handle;
-  bufferlist bl;
-  bl.append(data, len);
-  int r = aio_put_obj_data(ctx, obj, bl, ofs, exclusive, &handle);
-  if (r < 0)
-    return r;
-  return aio_wait(handle);
-}
-
-int RGWRados::aio_put_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl,
+int RGWRados::aio_put_obj_data(rgw_obj& obj, bufferlist& bl,
 			       off_t ofs, bool exclusive,
                                void **handle)
 {
@@ -6721,6 +6717,16 @@ int RGWRados::aio_put_obj_data(void *ctx, rgw_obj& obj, bufferlist& bl,
     op.create(true);
 
   if (ofs == -1) {
+    /*
+     * not setting size for allocation hint
+     * assuming first write buffer length is the common chunk size that will be used.
+     * Not using configured chunk size, because that might be modified when pool
+     * alignment requires.
+     */
+    ldout(cct, 20) << "setting rados allocation hint, write_size=" << bl.length() << dendl;
+    op.set_alloc_hint2(0, bl.length(), ALLOC_HINT_FLAG_SEQUENTIAL_WRITE |
+                       ALLOC_HINT_FLAG_SEQUENTIAL_READ |
+                       ALLOC_HINT_FLAG_IMMUTABLE);
     op.write_full(bl);
   } else {
     op.write(ofs, bl);
