@@ -65,6 +65,7 @@
 #include "messages/MOSDMarkMeDown.h"
 #include "messages/MOSDOp.h"
 #include "messages/MOSDOpReply.h"
+#include "messages/MOSDBackoff.h"
 #include "messages/MOSDRepOp.h"
 #include "messages/MOSDRepOpReply.h"
 #include "messages/MOSDSubOp.h"
@@ -6272,6 +6273,10 @@ epoch_t op_required_epoch(OpRequestRef op)
     MOSDOp *m = static_cast<MOSDOp*>(op->get_req());
     return m->get_map_epoch();
   }
+  case CEPH_MSG_OSD_BACKOFF: {
+    MOSDBackoff *m = static_cast<MOSDBackoff*>(op->get_req());
+    return m->osd_epoch;
+  }
   case MSG_OSD_SUBOP:
     return replica_op_required_epoch<MOSDSubOp, MSG_OSD_SUBOP>(op);
   case MSG_OSD_REPOP:
@@ -6386,6 +6391,9 @@ bool OSD::dispatch_op_fast(OpRequestRef op, OSDMapRef& osdmap)
   // client ops
   case CEPH_MSG_OSD_OP:
     handle_op(op, osdmap);
+    break;
+  case CEPH_MSG_OSD_BACKOFF:
+    handle_backoff(op, osdmap);
     break;
     // for replication etc.
   case MSG_OSD_SUBOP:
@@ -8805,6 +8813,54 @@ void OSD::handle_op(OpRequestRef& op, OSDMapRef& osdmap)
     dout(7) << "dropping; no longer have PG (or pool); client will retarget"
 	    << dendl;
     return;
+  }
+}
+
+void OSD::handle_backoff(OpRequestRef& op, OSDMapRef& osdmap)
+{
+  MOSDBackoff *m = static_cast<MOSDBackoff*>(op->get_req());
+  Session *s = static_cast<Session*>(m->get_connection()->get_priv());
+  dout(10) << __func__ << " " << *m << " session " << s << dendl;
+  assert(s);
+  s->put();
+
+  if (m->op != CEPH_OSD_BACKOFF_OP_ACK_BLOCK) {
+    dout(10) << __func__ << " unrecognized op, ignoring" << dendl;
+    return;
+  }
+
+  // map hobject range to PG(s)
+  bool queued = false;
+  hobject_t pos = m->begin;
+  while (true) {
+    pg_t _pgid(pos.get_hash(), pos.pool);
+    if (osdmap->have_pg_pool(pos.pool)) {
+      _pgid = osdmap->raw_pg_to_pg(_pgid);
+    }
+    spg_t pgid;
+    if (!osdmap->get_primary_shard(_pgid, &pgid)) {
+      // missing pool or acting set empty -- drop
+      return;
+    }
+    dout(10) << __func__ << " pos " << pos << " pgid " << pgid << dendl;
+    PGRef pg = get_pg_or_queue_for_pg(pgid, op, s);
+    if (pg) {
+      if (!queued) {
+	enqueue_op(pg, op);
+	queued = true;
+      } else {
+	// use a fresh OpRequest
+	OpRequestRef newop(op_tracker.create_request<OpRequest, Message*>(m));
+	newop->mark_event("duplicated original op for another pg");
+	enqueue_op(pg, newop);
+      }
+    }
+    // advance
+    pos = _pgid.get_hobj_end(osdmap->get_pg_pool(pos.pool)->get_pg_num());
+    dout(20) << __func__ << "  next pg " << pos << dendl;
+    if (cmp_bitwise(pos, m->end) >= 0) {
+      break;
+    }
   }
 }
 
