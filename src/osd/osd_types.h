@@ -2495,6 +2495,18 @@ public:
 	up_primary(-1)
       {}
 
+    pg_interval_t(
+      vector<int32_t> &&up,
+      vector<int32_t> &&acting,
+      epoch_t first,
+      epoch_t last,
+      bool maybe_went_rw,
+      int32_t primary,
+      int32_t up_primary)
+      : up(up), acting(acting), first(first), last(last),
+	maybe_went_rw(maybe_went_rw), primary(primary), up_primary(up_primary)
+      {}
+
     void encode(bufferlist& bl) const;
     void decode(bufferlist::iterator& bl);
     void dump(Formatter *f) const;
@@ -2549,6 +2561,8 @@ public:
 private:
 
   unique_ptr<interval_rep> past_intervals;
+
+  PastIntervals(interval_rep *rep) : past_intervals(rep) {}
 
 public:
   bool is_classic() const {
