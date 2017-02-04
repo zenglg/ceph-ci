@@ -33,6 +33,7 @@ class PyModules
   DaemonStateIndex &daemon_state;
   ClusterState &cluster_state;
   MonClient &monc;
+  Objecter &objecter;
   Finisher &finisher;
 
   mutable Mutex lock{"PyModules"};
@@ -42,13 +43,15 @@ class PyModules
 public:
   static constexpr auto config_prefix = "mgr.";
 
-  PyModules(DaemonStateIndex &ds, ClusterState &cs, MonClient &mc,
+  PyModules(DaemonStateIndex &ds, ClusterState &cs,
+            MonClient &mc, Objecter &objecter,
             Finisher &f);
 
   ~PyModules();
 
   // FIXME: wrap for send_command?
   MonClient &get_monc() {return monc;}
+  Objecter  &get_objecter() {return objecter;}
 
   PyObject *get_python(const std::string &what);
   PyObject *get_server_python(const std::string &hostname);
