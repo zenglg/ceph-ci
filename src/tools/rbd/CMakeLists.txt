@@ -44,7 +44,7 @@ target_link_libraries(rbd librbd librados
   cls_journal_client cls_rbd_client
   rbd_types
   journal
-  ceph-common global
+  common global
   ${Boost_REGEX_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY}
   ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS})
 if(WITH_KRBD)

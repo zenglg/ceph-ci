@@ -76,7 +76,7 @@ target_link_libraries(ceph_test_signal_handlers global ${BLKID_LIBRARIES} ${CMAK
 add_executable(ceph_test_rewrite_latency
   test_rewrite_latency.cc
   )
-target_link_libraries(ceph_test_rewrite_latency ceph-common
+target_link_libraries(ceph_test_rewrite_latency common
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT} ${CRYPTO_LIBS} m ${EXTRALIBS})
 
@@ -94,7 +94,7 @@ target_link_libraries(test_crypto
   )
 
 add_executable(test_build_libcommon buildtest_skeleton.cc)
-target_link_libraries(test_build_libcommon ceph-common pthread ${CRYPTO_LIBS} ${EXTRALIBS})
+target_link_libraries(test_build_libcommon common pthread ${CRYPTO_LIBS} ${EXTRALIBS})
 
 if(WITH_RADOSGW)
   add_executable(test_build_librgw buildtest_skeleton.cc)
@@ -108,7 +108,7 @@ if(WITH_LIBCEPHFS)
 endif(WITH_LIBCEPHFS)
 
 add_executable(test_build_librados buildtest_skeleton.cc)
-target_link_libraries(test_build_librados librados pthread ${CRYPTO_LIBS} ${EXTRALIBS} osdc osd os ceph-common cls_lock_client ${BLKID_LIBRARIES})
+target_link_libraries(test_build_librados librados pthread ${CRYPTO_LIBS} ${EXTRALIBS} osdc osd os common cls_lock_client ${BLKID_LIBRARIES})
 
 # bench_log
 set(bench_log_srcs
@@ -278,7 +278,6 @@ target_include_directories(ceph_test_librgw_file PRIVATE ${FCGI_INCLUDE_DIR})
 target_link_libraries(ceph_test_librgw_file
   rgw
   librados
-  ceph-common
   ${UNITTEST_LIBS}
   ${EXTRALIBS}
   )
@@ -292,7 +291,6 @@ set_target_properties(ceph_test_librgw_file_cd PROPERTIES COMPILE_FLAGS
 target_link_libraries(ceph_test_librgw_file_cd
   rgw
   librados
-  ceph-common
   ${UNITTEST_LIBS}
   ${EXTRALIBS}
   )
@@ -306,7 +304,6 @@ set_target_properties(ceph_test_librgw_file_gp PROPERTIES COMPILE_FLAGS
 target_link_libraries(ceph_test_librgw_file_gp
   rgw
   librados
-  ceph-common
   ${UNITTEST_LIBS}
   ${EXTRALIBS}
   )
@@ -321,7 +318,7 @@ target_include_directories(ceph_test_librgw_file_nfsns PRIVATE ${FCGI_INCLUDE_DI
 target_link_libraries(ceph_test_librgw_file_nfsns
   rgw
   librados
-  ceph-common
+  boost_system
   ${UNITTEST_LIBS}
   ${EXTRALIBS}
   )
@@ -335,7 +332,6 @@ set_target_properties(ceph_test_librgw_file_aw PROPERTIES COMPILE_FLAGS
 target_link_libraries(ceph_test_librgw_file_aw
   rgw
   librados
-  ceph-common
   ${UNITTEST_LIBS}
   ${EXTRALIBS}
   )
@@ -363,8 +359,9 @@ set_target_properties(test_rgw_ldap PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_rgw_ldap
   librados
-  ceph-common
+  common
   ${OPENLDAP_LIBRARIES}
+  ${Boost_LIBRARIES}
   ${UNITTEST_LIBS}
   )
 
@@ -401,7 +398,7 @@ set_target_properties(ceph_xattr_bench PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(ceph_xattr_bench
   os
-  ceph-common
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
@@ -426,7 +423,7 @@ set_target_properties(ceph_test_filejournal PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(ceph_test_filejournal
   os
-  ceph-common
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
@@ -500,7 +497,7 @@ if(HAVE_BLKID)
     test_get_blkdev_size.cc
     )
   target_link_libraries(ceph_test_get_blkdev_size
-    ceph-common
+    common
     pthread
     ${EXTRALIBS}
     ${BLKID_LIBRARIES}
@@ -598,14 +595,14 @@ add_executable(unittest_encoding
   encoding.cc
   )
 add_ceph_unittest(unittest_encoding ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_encoding)
-target_link_libraries(unittest_encoding ceph-common librados ${XIO_LIBRARY} pthread rt m ${BLKID_LIBRARIES})
+target_link_libraries(unittest_encoding common librados ${XIO_LIBRARY} pthread rt m ${BLKID_LIBRARIES})
 
 # unittest_addrs
 add_executable(unittest_addrs
   test_addrs.cc
   )
 add_ceph_unittest(unittest_addrs ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_addrs)
-target_link_libraries(unittest_addrs ceph-common librados ${XIO_LIBRARY} pthread rt m ${BLKID_LIBRARIES})
+target_link_libraries(unittest_addrs common librados ${XIO_LIBRARY} pthread rt m ${BLKID_LIBRARIES})
 
 # unittest_workqueue
 add_executable(unittest_workqueue
@@ -707,7 +704,7 @@ add_executable(unittest_xlist
   test_xlist.cc
   )
 add_ceph_unittest(unittest_xlist ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_xlist)
-target_link_libraries(unittest_xlist ceph-common ${XIO_LIBRARY})
+target_link_libraries(unittest_xlist common ${XIO_LIBRARY})
 
 # unittest_arch
 add_executable(unittest_arch
@@ -801,7 +798,7 @@ add_executable(unittest_heartbeatmap
   $<TARGET_OBJECTS:unit-main>
   )
 add_ceph_unittest(unittest_heartbeatmap ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_heartbeatmap)
-target_link_libraries(unittest_heartbeatmap global ceph-common)
+target_link_libraries(unittest_heartbeatmap common global)
 
 if(${WITH_RADOSGW})
   # unittest_formatter
@@ -820,7 +817,7 @@ add_executable(unittest_daemon_config
   )
 add_ceph_unittest(unittest_daemon_config ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_daemon_config)
 target_link_libraries(unittest_daemon_config
-  ceph-common
+  common
   global
   ${BLKID_LIBRARIES}
   ${EXTRALIBS}
