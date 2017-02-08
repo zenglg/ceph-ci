@@ -564,8 +564,8 @@ set(ceph_common_deps
   ${BLKID_LIBRARIES} ${Backtrace_LIBRARIES}
   ${CRYPTO_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
 if(HAVE_RDMA)
-  list(APPEND ceph_common_deps ${RDMA_LIBRARY})
-endif()
+  target_link_libraries(ceph-common ${RDMA_LIBRARY})
+endif(HAVE_RDMA)
 if(NOT WITH_SYSTEM_BOOST)
   list(APPEND ceph_common_deps ${ZLIB_LIBRARIES})
 endif()
