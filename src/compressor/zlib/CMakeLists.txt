@@ -31,10 +31,7 @@ add_library(ceph_zlib SHARED ${zlib_sources})
 add_dependencies(ceph_zlib ${CMAKE_SOURCE_DIR}/src/ceph_ver.h)
 target_link_libraries(ceph_zlib ${ZLIB_LIBRARIES})
 target_include_directories(ceph_zlib PRIVATE "${CMAKE_SOURCE_DIR}/src/isa-l/include")
-set_target_properties(ceph_zlib PROPERTIES
-  VERSION 2.0.0
-  SOVERSION 2
-  INSTALL_RPATH "")
+set_target_properties(ceph_zlib PROPERTIES VERSION 2.0.0 SOVERSION 2)
 install(TARGETS ceph_zlib DESTINATION ${compressor_plugin_dir})
 
 if(WITH_EMBEDDED)

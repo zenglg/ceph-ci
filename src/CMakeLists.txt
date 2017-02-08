@@ -552,8 +552,6 @@ add_library(ceph-common SHARED
   $<TARGET_OBJECTS:common-objs>
   $<TARGET_OBJECTS:common_mountcephfs_objs>
   $<TARGET_OBJECTS:global_common_objs>)
-set_target_properties(ceph-common PROPERTIES
-  INSTALL_RPATH "")
 target_link_libraries(ceph-common json_spirit erasure_code rt ${LIB_RESOLV}
   ${Boost_THREAD_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
@@ -902,8 +900,6 @@ if(WITH_LIBCEPHFS)
   add_executable(mount.ceph ${mount_ceph_srcs}
     $<TARGET_OBJECTS:parse_secret_objs>
     $<TARGET_OBJECTS:common_mountcephfs_objs>)
-  set_target_properties(mount.ceph PROPERTIES
-    INSTALL_RPATH "")
   target_link_libraries(mount.ceph ${KEYUTILS_LIBRARIES})
 
   install(TARGETS ceph-syn DESTINATION bin)
