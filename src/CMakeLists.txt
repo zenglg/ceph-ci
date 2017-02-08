@@ -563,9 +563,6 @@ set(ceph_common_deps
   ${Boost_IOSTREAMS_LIBRARY}
   ${BLKID_LIBRARIES} ${Backtrace_LIBRARIES}
   ${CRYPTO_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
-if(HAVE_RDMA)
-  target_link_libraries(ceph-common ${RDMA_LIBRARY})
-endif(HAVE_RDMA)
 if(NOT WITH_SYSTEM_BOOST)
   list(APPEND ceph_common_deps ${ZLIB_LIBRARIES})
 endif()
