@@ -27,11 +27,8 @@ set(merge_libs
   mon
   os
   osd
-  osdc)
-
-if(NOT WITH_SYSTEM_ROCKSDB)
-  list(APPEND merge_libs ${ROCKSDB_LIBRARIES})
-endif(NOT WITH_SYSTEM_ROCKSDB)
+  osdc
+  rocksdb)
 
 if(HAVE_ARMV8_CRC)
   list(APPEND merge_libs common_crc_aarch64)
