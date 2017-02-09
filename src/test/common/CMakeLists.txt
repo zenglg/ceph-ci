@@ -222,6 +222,6 @@ add_executable(unittest_back_trace
   test_back_trace.cc)
 set_source_files_properties(test_back_trace.cc PROPERTIES
   COMPILE_FLAGS -fno-inline)
-target_link_libraries(unittest_back_trace ceph-common)
+target_link_libraries(unittest_back_trace global)
 add_ceph_unittest(unittest_back_trace
   ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/unittest_back_trace)
