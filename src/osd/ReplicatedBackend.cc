@@ -14,9 +14,7 @@
 #include "common/errno.h"
 #include "ReplicatedBackend.h"
 #include "messages/MOSDOp.h"
-#include "messages/MOSDSubOp.h"
 #include "messages/MOSDRepOp.h"
-#include "messages/MOSDSubOpReply.h"
 #include "messages/MOSDRepOpReply.h"
 #include "messages/MOSDPGPush.h"
 #include "messages/MOSDPGPull.h"
@@ -1132,32 +1130,15 @@ void ReplicatedBackend::sub_op_modify_applied(RepModifyRef rm)
 
   dout(10) << "sub_op_modify_applied on " << rm << " op "
 	   << *rm->op->get_req() << dendl;
-  const Message *m = rm->op->get_req();
+  const MOSDRepOp *req = static_cast<const MOSDRepOp*>(rm->op->get_req());
+  assert(req->get_type() == MSG_OSD_REPOP);
 
   Message *ack = NULL;
-  eversion_t version;
-
-  if (m->get_type() == MSG_OSD_SUBOP) {
-    // doesn't have CLIENT SUBOP feature ,use Subop
-    const MOSDSubOp *req = static_cast<const MOSDSubOp*>(m);
-    version = req->version;
-    if (!rm->committed)
-      ack = new MOSDSubOpReply(
-	req, parent->whoami_shard(),
-	0, get_osdmap()->get_epoch(), CEPH_OSD_FLAG_ACK);
-  } else if (m->get_type() == MSG_OSD_REPOP) {
-    const MOSDRepOp *req = static_cast<const MOSDRepOp*>(m);
-    version = req->version;
-    if (!rm->committed)
-      ack = new MOSDRepOpReply(
-	static_cast<const MOSDRepOp*>(m), parent->whoami_shard(),
-	0, get_osdmap()->get_epoch(), CEPH_OSD_FLAG_ACK);
-  } else {
-    ceph_abort();
-  }
-
-  // send ack to acker only if we haven't sent a commit already
-  if (ack) {
+  eversion_t version = req->version;
+  if (!rm->committed) {
+    ack = new MOSDRepOpReply(
+      req, parent->whoami_shard(),
+      0, get_osdmap()->get_epoch(), CEPH_OSD_FLAG_ACK);
     ack->set_priority(CEPH_MSG_PRIO_HIGH); // this better match commit priority!
     get_parent()->send_message_osd_cluster(
       rm->ackerosd, ack, get_osdmap()->get_epoch());
@@ -1180,30 +1161,16 @@ void ReplicatedBackend::sub_op_modify_commit(RepModifyRef rm)
   get_parent()->update_last_complete_ondisk(rm->last_complete);
 
   const Message *m = rm->op->get_req();
-  Message *commit = NULL;
-  if (m->get_type() == MSG_OSD_SUBOP) {
-    // doesn't have CLIENT SUBOP feature ,use Subop
-    MOSDSubOpReply  *reply = new MOSDSubOpReply(
-      static_cast<const MOSDSubOp*>(m),
-      get_parent()->whoami_shard(),
-      0, get_osdmap()->get_epoch(), CEPH_OSD_FLAG_ONDISK);
-    reply->set_last_complete_ondisk(rm->last_complete);
-    commit = reply;
-  } else if (m->get_type() == MSG_OSD_REPOP) {
-    MOSDRepOpReply *reply = new MOSDRepOpReply(
-      static_cast<const MOSDRepOp*>(m),
-      get_parent()->whoami_shard(),
-      0, get_osdmap()->get_epoch(), CEPH_OSD_FLAG_ONDISK);
-    reply->set_last_complete_ondisk(rm->last_complete);
-    commit = reply;
-  }
-  else {
-    ceph_abort();
-  }
+  assert(m->get_type() == MSG_OSD_REPOP);
 
-  commit->set_priority(CEPH_MSG_PRIO_HIGH); // this better match ack priority!
+  MOSDRepOpReply *reply = new MOSDRepOpReply(
+    static_cast<const MOSDRepOp*>(m),
+    get_parent()->whoami_shard(),
+    0, get_osdmap()->get_epoch(), CEPH_OSD_FLAG_ONDISK);
+  reply->set_last_complete_ondisk(rm->last_complete);
+  reply->set_priority(CEPH_MSG_PRIO_HIGH); // this better match ack priority!
   get_parent()->send_message_osd_cluster(
-    rm->ackerosd, commit, get_osdmap()->get_epoch());
+    rm->ackerosd, reply, get_osdmap()->get_epoch());
 
   log_subop_stats(get_parent()->get_logger(), rm->op, l_osd_sop_w);
 }
