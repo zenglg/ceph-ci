@@ -1056,6 +1056,16 @@ public:
     set<pg_shard_t> *acting_backfill,
     pg_shard_t *want_primary,
     ostream &ss);
+  void choose_force_backfill_ec(const map<pg_shard_t, pg_info_t> &all_info,
+				const pg_info_t &auth_info,
+				vector<int> *want,
+				set<pg_shard_t> *want_backfill) const;
+  void choose_force_backfill_replicated(const map<pg_shard_t, pg_info_t> &all_info,
+					const pg_info_t &auth_info,
+					vector<int> *want,
+					set<pg_shard_t> *want_backfill) const;
+
+  bool recoverable_and_ge_min_size(const vector<int> &want) const;
   bool choose_acting(pg_shard_t &auth_log_shard,
 		     bool restrict_to_up_acting,
 		     bool *history_les_bound);
