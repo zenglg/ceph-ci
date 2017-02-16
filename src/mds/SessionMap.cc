@@ -338,9 +338,12 @@ class C_IO_SM_Save : public SessionMapIOContext {
   version_t version;
 public:
   C_IO_SM_Save(SessionMap *cm, version_t v) : SessionMapIOContext(cm), version(v) {}
-  void finish(int r) {
-    assert(r == 0);
-    sessionmap->_save_finish(version);
+  void finish(int r) override {
+    if (r != 0) {
+      get_mds()->handle_write_error(r);
+    } else {
+      sessionmap->_save_finish(version);
+    }
   }
 };
 }
