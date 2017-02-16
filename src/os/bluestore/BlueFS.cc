@@ -1,7 +1,6 @@
 // -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 
-#include "boost/algorithm/string.hpp" 
 #include "BlueFS.h"
 
 #include "common/debug.h"
@@ -9,7 +8,6 @@
 #include "common/perf_counters.h"
 #include "BlockDevice.h"
 #include "Allocator.h"
-#include "include/assert.h"
 
 #define dout_context cct
 #define dout_subsys ceph_subsys_bluefs
@@ -1919,9 +1917,9 @@ int BlueFS::open_for_write(
     // match up with bluestore.  the slow device is always the second
     // one (when a dedicated block.db device is present and used at
     // bdev 0).  the wal device is always last.
-    if (boost::algorithm::ends_with(filename, ".slow")) {
+    if (strcmp(dirname.c_str() + dirname.length() - 5, ".slow") == 0) {
       file->fnode.prefer_bdev = BlueFS::BDEV_SLOW;
-    } else if (boost::algorithm::ends_with(dirname, ".wal")) {
+    } else if (strcmp(dirname.c_str() + dirname.length() - 4, ".wal") == 0) {
       file->fnode.prefer_bdev = BlueFS::BDEV_WAL;
     }
   }
@@ -1934,12 +1932,12 @@ int BlueFS::open_for_write(
 
   *h = _create_writer(file);
 
-  if (boost::algorithm::ends_with(filename, ".log")) {
+  if (0 == filename.compare(filename.length() - 4, 4, ".log")) {
     (*h)->writer_type = BlueFS::WRITER_WAL;
     if (logger && !overwrite) {
       logger->inc(l_bluefs_files_written_wal);
     }
-  } else if (boost::algorithm::ends_with(filename, ".sst")) {
+  } else if (0 == filename.compare(filename.length() - 4, 4, ".sst")) {
     (*h)->writer_type = BlueFS::WRITER_SST;
     if (logger) {
       logger->inc(l_bluefs_files_written_sst);
@@ -2179,7 +2177,7 @@ int BlueFS::readdir(const string& dirname, vector<string> *ls)
 {
   std::lock_guard<std::mutex> l(lock);
   dout(10) << __func__ << " " << dirname << dendl;
-  if (dirname.empty()) {
+  if (dirname.size() == 0) {
     // list dirs
     ls->reserve(dir_map.size() + 2);
     for (auto& q : dir_map) {
