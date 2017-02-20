@@ -228,7 +228,8 @@ def run_tests(ctx, config):
         attrs.append("!fails_on_mod_proxy_fcgi")
     for client, client_config in config.iteritems():
         args = [
-            'S3TEST_CONF={tdir}/archive/ragweed.{client}.conf'.format(tdir=testdir, client=client),
+            'RAGWEED_CONF={tdir}/archive/ragweed.{client}.conf'.format(tdir=testdir, client=client),
+            'RAGWEED_RUN=stage,check',
             'BOTO_CONFIG={tdir}/boto.cfg'.format(tdir=testdir),
             '{tdir}/ragweed/virtualenv/bin/nosetests'.format(tdir=testdir),
             '-w',
@@ -305,9 +306,9 @@ def task(ctx, config):
 
     log.debug('ragweed config is %s', config)
 
-    ragweed = {}
+    ragweed_conf = {}
     for client in clients:
-        ragweed[client] = ConfigObj(
+        ragweed_conf[client] = ConfigObj(
             indent_type='',
             infile={
                 'rgw':
