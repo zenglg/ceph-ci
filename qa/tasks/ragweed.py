@@ -317,8 +317,8 @@ def task(ctx, config):
                     'is_secure' : 'no',
                     },
                 'fixtures' : {},
-                's3 main'  : {},
-                's3 alt'   : {},
+                'user system'  : {},
+                'user regular'   : {},
                 }
             )
 
