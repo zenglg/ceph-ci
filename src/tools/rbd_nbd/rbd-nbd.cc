@@ -275,7 +275,7 @@ private:
           image.aio_read(pctx->request.from, pctx->request.len, pctx->data, c);
           break;
         case NBD_CMD_FLUSH:
-          image.aio_flush(c);
+          aio_callback(reinterpret_cast<librbd::completion_t>(c), pctx);
           break;
         case NBD_CMD_TRIM:
           image.aio_discard(pctx->request.from, pctx->request.len, c);
