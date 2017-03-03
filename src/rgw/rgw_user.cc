@@ -445,12 +445,14 @@ int rgw_delete_user(RGWRados *store, RGWUserInfo& info, RGWObjVersionTracker& ob
     }
   }
 
-  rgw_obj email_obj(store->get_zone_params().user_email_pool, info.user_email);
-  ldout(store->ctx(), 10) << "removing email index: " << info.user_email << dendl;
-  ret = store->delete_system_obj(email_obj);
-  if (ret < 0 && ret != -ENOENT) {
-    ldout(store->ctx(), 0) << "ERROR: could not remove " << info.user_id << ":" << email_obj << ", should be fixed (err=" << ret << ")" << dendl;
-    return ret;
+  if (!info.user_email.empty()) {
+    rgw_obj email_obj(store->get_zone_params().user_email_pool, info.user_email);
+    ldout(store->ctx(), 10) << "removing email index: " << info.user_email << dendl;
+    ret = store->delete_system_obj(email_obj);
+    if (ret < 0 && ret != -ENOENT) {
+      ldout(store->ctx(), 0) << "ERROR: could not remove " << info.user_id << ":" << email_obj << ", should be fixed (err=" << ret << ")" << dendl;
+      return ret;
+    }
   }
 
   string buckets_obj_id;
