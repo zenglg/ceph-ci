@@ -11491,7 +11491,9 @@ void ReplicatedPG::hit_set_remove_all()
     hobject_t oid = get_hit_set_archive_object(p->begin, p->end, p->using_gmt);
     assert(!is_degraded_or_backfilling_object(oid));
     ObjectContextRef obc = get_object_context(oid, false);
-    assert(obc);
+    if (!obc)
+      continue;
+    //assert(obc);
 
     OpContextUPtr ctx = simple_opc_create(obc);
     ctx->at_version = get_next_version();
@@ -11736,6 +11738,10 @@ void ReplicatedPG::hit_set_trim(OpContextUPtr &ctx, unsigned max)
     assert(!is_degraded_or_backfilling_object(oid));
 
     dout(20) << __func__ << " removing " << oid << dendl;
+    ObjectContextRef obc = get_object_context(oid, false);
+    if (!obc)
+      continue;
+
     ++ctx->at_version.version;
     ctx->log.push_back(
         pg_log_entry_t(pg_log_entry_t::DELETE,
@@ -11758,8 +11764,6 @@ void ReplicatedPG::hit_set_trim(OpContextUPtr &ctx, unsigned max)
     }
     updated_hit_set_hist.history.pop_front();
 
-    ObjectContextRef obc = get_object_context(oid, false);
-    assert(obc);
     --ctx->delta_stats.num_objects;
     --ctx->delta_stats.num_objects_hit_set_archive;
     ctx->delta_stats.num_bytes -= obc->obs.oi.size;
