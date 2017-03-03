@@ -33,6 +33,7 @@
 #include "rgw_token.h"
 #include "rgw_rest_role.h"
 #include "rgw_crypt.h"
+#include "rgw_crypt_sanitize.h"
 
 #include "include/assert.h"
 
@@ -4785,7 +4786,7 @@ RGWAuthApplier::aplptr_t RGWS3V2LocalAuthEngine::authenticate() const
     ldout(s->cct, 10) << "failed to create auth header\n" << auth_hdr << dendl;
     throw -EPERM;
   }
-  ldout(s->cct, 10) << "auth_hdr:\n" << auth_hdr << dendl;
+  ldout(s->cct, 10) << "auth_hdr:\n" << rgw::crypt_sanitize::auth{s,auth_hdr} << dendl;
 
   time_t req_sec = s->header_time.sec();
   if ((req_sec < now - RGW_AUTH_GRACE_MINS * 60 ||
