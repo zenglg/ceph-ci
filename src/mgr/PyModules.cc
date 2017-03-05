@@ -631,3 +631,15 @@ PyObject* PyModules::get_counter_python(
   return f.get();
 }
 
+PyObject *PyModules::get_context()
+{
+  PyThreadState *tstate = PyEval_SaveThread();
+  Mutex::Locker l(lock);
+  PyEval_RestoreThread(tstate);
+
+  // Construct a capsule containing ceph context
+  // TODO: a put() on context as a destructor argument?  and get() here?
+  auto capsule = PyCapsule_New(g_ceph_context, nullptr, nullptr);
+  return capsule;
+}
+
