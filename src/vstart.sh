@@ -794,7 +794,7 @@ if [ "$CEPH_NUM_MGR" -gt 0 ]; then
 EOF
 
         echo "Starting mgr.${name}"
-        run 'mgr' $CEPH_BIN/ceph-mgr -i $name
+        run 'mgr' $CEPH_BIN/ceph-mgr -i $name $ARGS
 
         mgr=$(($mgr + 1))
         [ $mgr -eq $CEPH_NUM_MGR ] && break
