@@ -9122,7 +9122,9 @@ void BlueStore::_wctx_finish(
     // longer allocated.  Note that this will leave behind edge bits
     // that are no longer referenced but not deallocated (until they
     // age out of the cache naturally).
-    b->discard_unallocated(c.get());
+    if (!blob.is_shared()) {
+      b->discard_unallocated(c.get());
+    }
     for (auto e : r) {
       dout(20) << __func__ << "  release " << e << dendl;
       txc->released.insert(e.offset, e.length);
