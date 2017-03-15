@@ -9336,6 +9336,15 @@ int Client::statfs(const char *path, struct statvfs *stbuf,
   assert(cct->_conf->client_quota == false || quota_root != nullptr);
 
   if (quota_root && cct->_conf->client_quota_df && quota_root->quota.max_bytes) {
+    int r = _getattr(quota_root, 0, perms, true);
+    if (r != 0) {
+      // Ignore return value: error getting latest inode metadata is not a good
+      // reason to break "df".
+      lderr(cct) << "Error in getattr on quota root 0x"
+                 << std::hex << quota_root->ino << std::dec
+                 << " statfs result may be outdated" << dendl;
+    }
+
     // Special case: if there is a size quota set on the Inode acting
     // as the root for this client mount, then report the quota status
     // as the filesystem statistics.
