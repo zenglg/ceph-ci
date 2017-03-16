@@ -84,7 +84,7 @@ int rgw_process_authenticated(RGWHandler_REST * const handler,
   if (ret < 0) {
     if (s->system_request) {
       dout(2) << "overriding permissions due to system operation" << dendl;
-    } else if (s->auth_identity->is_admin_of(s->user->user_id)) {
+    } else if (s->auth.identity->is_admin_of(s->user->user_id)) {
       dout(2) << "overriding permissions due to admin operation" << dendl;
     } else {
       return ret;
@@ -168,8 +168,8 @@ int process_request(RGWRados* const store,
 
   s->op_type = op->get_type();
 
-  req->log(s, "authorizing");
-  ret = handler->authorize();
+  req->log(s, "verifying requester");
+  ret = op->verify_requester();
   if (ret < 0) {
     dout(10) << "failed to authorize request" << dendl;
     abort_early(s, NULL, ret, handler);
@@ -178,8 +178,8 @@ int process_request(RGWRados* const store,
 
   /* FIXME: remove this after switching all handlers to the new authentication
    * infrastructure. */
-  if (nullptr == s->auth_identity) {
-    s->auth_identity = rgw_auth_transform_old_authinfo(s);
+  if (nullptr == s->auth.identity) {
+    s->auth.identity = rgw::auth::transform_old_authinfo(s);
   }
 
   req->log(s, "normalizing buckets and tenants");
