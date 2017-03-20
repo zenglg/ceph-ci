@@ -165,9 +165,11 @@ struct denc_traits<PExtentVector> {
   static constexpr bool featured = false;
   static void bound_encode(const PExtentVector& v, size_t& p) {
     p += sizeof(uint32_t);
-    size_t per = 0;
-    denc(*(bluestore_pextent_t*)nullptr, per);
-    p += per * v.size();
+    if (v.size()) {
+      size_t per = 0;
+      denc(v.front(), per);
+      p += per * v.size();
+    }
   }
   static void encode(const PExtentVector& v,
 		     bufferlist::contiguous_appender& p) {
@@ -221,10 +223,12 @@ struct bluestore_extent_ref_map_t {
 
   void bound_encode(size_t& p) const {
     denc_varint((uint32_t)0, p);
-    size_t elem_size = 0;
-    denc_varint_lowz((uint32_t)0, p);
-    ((const record_t*)nullptr)->bound_encode(elem_size);
-    p += elem_size * ref_map.size();
+    if (!ref_map.empty()) {
+      size_t elem_size = 0;
+      denc_varint_lowz((uint32_t)0, p);
+      ref_map.begin()->second.bound_encode(elem_size);
+      p += elem_size * ref_map.size();
+    }
   }
   void encode(bufferlist::contiguous_appender& p) const {
     uint32_t n = ref_map.size();
