@@ -46,7 +46,7 @@ class Allocator;
 class FreelistManager;
 class BlueFS;
 
-//#define DEBUG_CACHE
+#define DEBUG_CACHE
 
 enum {
   l_bluestore_first = 732430,

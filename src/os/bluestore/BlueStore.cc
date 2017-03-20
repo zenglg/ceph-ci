@@ -988,7 +988,7 @@ void BlueStore::TwoQCache::_add_buffer(Buffer *b, int level, Buffer *near)
 void BlueStore::TwoQCache::_rm_buffer(Buffer *b)
 {
   dout(20) << __func__ << " " << *b << dendl;
- if (!b->is_empty()) {
+  if (!b->is_empty()) {
     assert(buffer_bytes >= b->length);
     buffer_bytes -= b->length;
     assert(buffer_list_bytes[b->cache_private] >= b->length);
@@ -1011,6 +1011,7 @@ void BlueStore::TwoQCache::_rm_buffer(Buffer *b)
 
 void BlueStore::TwoQCache::_move_buffer(Cache *srcc, Buffer *b)
 {
+  _audit("_move_buffer start");  
   TwoQCache *src = static_cast<TwoQCache*>(srcc);
   src->_rm_buffer(b);
 
@@ -1035,6 +1036,7 @@ void BlueStore::TwoQCache::_move_buffer(Cache *srcc, Buffer *b)
     buffer_bytes += b->length;
     buffer_list_bytes[b->cache_private] += b->length;
   }
+  _audit("_move_buffer end");  
 }
 
 void BlueStore::TwoQCache::_adjust_buffer_size(Buffer *b, int64_t delta)

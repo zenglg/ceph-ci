@@ -6,7 +6,7 @@ if test -e build; then
 fi
 mkdir build
 cd build
-cmake -DBOOST_J=$(nproc) "$@" ..
+cmake -DCMAKE_BUILD_TYPE=Debug -DBOOST_J=$(nproc) "$@" ..
 
 # minimal config to find plugins
 cat <<EOF > ceph.conf
