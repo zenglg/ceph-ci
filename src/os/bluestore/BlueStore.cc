@@ -3104,33 +3104,42 @@ void BlueStore::Collection::split_cache(
       dest->onode_map.onode_map[o->oid] = o;
       dest->onode_map.cache = dest->cache;
 
-      // move over shared blobs and buffers
+      // move over shared blobs and buffers.  cover shared blobs from
+      // both extent map and spanning blob map (the full extent map
+      // may not be faulted in)
+      vector<SharedBlob*> sbvec;
       for (auto& e : o->extent_map.extent_map) {
-	SharedBlob *sb = e.blob->shared_blob.get();
+	sbvec.push_back(e.blob->shared_blob.get());
+      }
+      for (auto& b : o->extent_map.spanning_blob_map) {
+	sbvec.push_back(b.second->shared_blob.get());
+      }
+      for (auto sb : sbvec) {
 	if (sb->coll == dest) {
-	  ldout(store->cct, 20) << __func__ << "  already moved "
-				<< *sb << dendl;
+	  ldout(store->cct, 20) << __func__ << "  already moved " << *sb
+				<< dendl;
 	  continue;
 	}
 	sb->coll = dest;
 	if (dest->cache != cache) {
 	  // if the SharedBlob isn't actually shared, this is the only
 	  // time we'll encounter it, and we should move the buffers.
-	  if (e.blob->get_blob().is_shared()) {
-	    ldout(store->cct, 20) << __func__ << "  moving "
-				  << *sb << dendl;
+	  if (sb->get_sbid()) {
+	    ldout(store->cct, 20) << __func__ << "  moving " << *sb << dendl;
 	    shared_blob_set.remove(sb);
 	    dest->shared_blob_set.add(dest, sb);
 	  }
 	  for (auto& i : sb->bc.buffer_map) {
 	    if (!i.second->is_writing()) {
-	      ldout(store->cct, 20) << __func__ << "  moving "
-				    << *i.second << dendl;
+	      ldout(store->cct, 20) << __func__ << "  moving " << *i.second
+				    << dendl;
 	      dest->cache->_move_buffer(cache, i.second.get());
 	    }
 	  }
 	}
       }
+
+
     }
   }
 }
