@@ -1366,12 +1366,17 @@ bool PG::recoverable_and_ge_min_size(const vector<int> &want) const
 
 void PG::choose_force_backfill_ec(const map<pg_shard_t, pg_info_t> &all_info,
 				  const pg_info_t &auth_info,
+				  const vector<int> &up,
 				  vector<int> *want,
 				  set<pg_shard_t> *want_backfill) const
 {
   set<pair<int, pg_shard_t> > candidates_by_cost;
   for (uint8_t i = 0; i < want->size(); ++i) {
     if ((*want)[i] == CRUSH_ITEM_NONE)
+      continue;
+
+    // only up or acting osds can be backfill targets
+    if (up.size() <= (unsigned)i || up[i] != (*want)[i])
       continue;
 
     // Considering log entries to recover is accurate enough for
@@ -1411,11 +1416,15 @@ void PG::choose_force_backfill_ec(const map<pg_shard_t, pg_info_t> &all_info,
 
 void PG::choose_force_backfill_replicated(const map<pg_shard_t, pg_info_t> &all_info,
 					  const pg_info_t &auth_info,
+					  const set<int> &up,
 					  vector<int> *want,
 					  set<pg_shard_t> *want_backfill) const
 {
   set<pair<int, pg_shard_t> > candidates_by_cost;
   for (auto osd_num : *want) {
+    // only up or acting osds can be backfill targets
+    if (up.find(osd_num) == up.end())
+      continue;
     pg_shard_t shard_i(osd_num, shard_id_t::NO_SHARD);
     auto shard_info = all_info.find(shard_i)->second;
     // use the approximate magnitude of the difference in length of
@@ -1566,11 +1575,17 @@ bool PG::choose_acting(pg_shard_t &auth_log_shard_id,
     return false;
   }
 
+  dout(10) << __func__ << " want=" << want
+	   << " want_backfill=" << want_backfill << dendl;
+
   if ((get_osdmap()->get_up_osd_features() & CEPH_FEATURE_FORCE_BACKFILL) == CEPH_FEATURE_FORCE_BACKFILL) {
     if (pool.info.ec_pool()) {
-      choose_force_backfill_ec(all_info, auth_log_shard->second, &want, &want_backfill);
+      choose_force_backfill_ec(all_info, auth_log_shard->second, up,
+			       &want, &want_backfill);
     } else {
-      choose_force_backfill_replicated(all_info, auth_log_shard->second, &want, &want_backfill);
+      choose_force_backfill_replicated(all_info, auth_log_shard->second,
+				       set<int>(up.begin(), up.end()),
+				       &want, &want_backfill);
     }
   }
 

@@ -1058,10 +1058,12 @@ public:
     ostream &ss);
   void choose_force_backfill_ec(const map<pg_shard_t, pg_info_t> &all_info,
 				const pg_info_t &auth_info,
+				const vector<int> &up,
 				vector<int> *want,
 				set<pg_shard_t> *want_backfill) const;
   void choose_force_backfill_replicated(const map<pg_shard_t, pg_info_t> &all_info,
 					const pg_info_t &auth_info,
+					const set<int> &up,
 					vector<int> *want,
 					set<pg_shard_t> *want_backfill) const;
 
