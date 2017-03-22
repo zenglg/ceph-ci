@@ -80,4 +80,3 @@ tasks:
       max-entries: 10
       src: cluster1.client.0
       dest: cluster2.client.0
-- radosgw_admin:

@@ -34,11 +34,6 @@ tasks:
         is master: True
         master zone: seinfeld
         zones: [seinfeld]
-      george:
-        api name: api1
-        is master: False
-        master zone: constanza
-        zones: [constanza]
     cluster1.client.0:
       valgrind: [--tool=memcheck]
       system user:
@@ -47,4 +42,3 @@ tasks:
         secret key: 1y4IOauQoL18Gp2zM7lC1vLmoawgqcYPbYGcWfXv
 - sleep:
     duration: 10
-- radosgw_admin:
