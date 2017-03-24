@@ -7887,6 +7887,10 @@ void BlueStore::_kv_sync_thread()
 	bluefs_extents_reclaiming.clear();
       }
 
+      // release throttle now that they are committed
+      throttle_ops.put(ops);
+      throttle_bytes.put(bytes);
+
       {
 	std::unique_lock<std::mutex> m(kv_finalize_lock);
 	if (kv_committing_to_finalize.empty()) {
