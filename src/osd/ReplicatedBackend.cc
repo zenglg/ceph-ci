@@ -1499,6 +1499,7 @@ void ReplicatedBackend::prep_push_to_replica(
     SnapSetContext *ssc = obc->ssc;
     assert(ssc);
     dout(15) << "push_to_replica snapset is " << ssc->snapset << dendl;
+    pop->recovery_info.ss = ssc->snapset;
     map<pg_shard_t, pg_missing_t>::const_iterator pm =
       get_parent()->get_shard_missing().find(peer);
     assert(pm != get_parent()->get_shard_missing().end());
@@ -1570,6 +1571,7 @@ void ReplicatedBackend::prep_push(
   pi.recovery_info.clone_subset = clone_subsets;
   pi.recovery_info.soid = soid;
   pi.recovery_info.oi = obc->obs.oi;
+  pi.recovery_info.ss = pop->recovery_info.ss;
   pi.recovery_info.version = version;
   pi.lock_manager = std::move(lock_manager);
 
