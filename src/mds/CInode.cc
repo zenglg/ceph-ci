@@ -1198,7 +1198,13 @@ void CInode::store_backtrace(MDSInternalContextBase *fin, int op_prio)
 
 void CInode::_stored_backtrace(int r, version_t v, Context *fin)
 {
-  if (r < 0) {
+  if (r == -ENOENT) {
+    // ENOENT on a RADOS write means the pool doesn't exist, so
+    // just log it and then act like we succeeded (the backtrace
+    // can never be written)
+    dout(4) << "store backtrace got ENOENT: a data pool was deleted "
+               "beneath us!" << dendl;
+  } else if (r < 0) {
     dout(1) << "store backtrace error " << r << " v " << v << dendl;
     mdcache->mds->clog->error() << "failed to store backtrace on ino "
 				<< ino() << " object"
