@@ -11036,7 +11036,7 @@ uint64_t PrimaryLogPG::recover_backfill(
     add_object_context_to_pg_stat(obc, &stat);
     pending_backfill_updates[*i] = stat;
   }
-  if (HAVE_FEATURE(get_min_upacting_features(), SERVER_LUMINOUS)) {
+  if (false && HAVE_FEATURE(get_min_upacting_features(), SERVER_LUMINOUS)) {
     map<pg_shard_t,MOSDPGBackfillRemove*> reqs;
     for (unsigned i = 0; i < to_remove.size(); ++i) {
       handle.reset_tp_timeout();
