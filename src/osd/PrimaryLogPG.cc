@@ -11072,21 +11072,30 @@ uint64_t PrimaryLogPG::recover_backfill(
     add_object_context_to_pg_stat(obc, &stat);
     pending_backfill_updates[*i] = stat;
   }
-  if (false && HAVE_FEATURE(get_min_upacting_features(), SERVER_LUMINOUS)) {
+  if (HAVE_FEATURE(get_min_upacting_features(), SERVER_LUMINOUS)) {
     map<pg_shard_t,MOSDPGBackfillRemove*> reqs;
     for (unsigned i = 0; i < to_remove.size(); ++i) {
       handle.reset_tp_timeout();
-      pg_shard_t target = to_remove[i].get<2>();
+      pg_shard_t peer = to_remove[i].get<2>();
       MOSDPGBackfillRemove *m;
-      auto it = reqs.find(target);
+#if 0
+      auto it = reqs.find(peer);
       if (it != reqs.end()) {
 	m = it->second;
       } else {
-	m = reqs[target] = new MOSDPGBackfillRemove(
-	  spg_t(info.pgid.pgid, target.shard),
+	m = reqs[peer] = new MOSDPGBackfillRemove(
+	  spg_t(info.pgid.pgid, peer.shard),
 	  get_osdmap()->get_epoch());
 	m->ls.push_back(make_pair(to_remove[i].get<0>(), to_remove[i].get<1>()));
       }
+#endif
+      m = new MOSDPGBackfillRemove(
+	spg_t(info.pgid.pgid, peer.shard),
+	get_osdmap()->get_epoch());
+      m->ls.push_back(make_pair(to_remove[i].get<0>(), to_remove[i].get<1>()));
+      osd->send_message_osd_cluster(peer.osd, m,
+				    get_osdmap()->get_epoch());
+
       if (to_remove[i].get<0>() <= last_backfill_started)
 	pending_backfill_updates[to_remove[i].get<0>()]; // add empty stat!
     }
@@ -11100,7 +11109,8 @@ uint64_t PrimaryLogPG::recover_backfill(
       handle.reset_tp_timeout();
 
       // ordered before any subsequent updates
-      send_remove_op(to_remove[i].get<0>(), to_remove[i].get<1>(), to_remove[i].get<2>());
+      send_remove_op(to_remove[i].get<0>(), to_remove[i].get<1>(),
+		     to_remove[i].get<2>());
 
       if (to_remove[i].get<0>() <= last_backfill_started)
 	pending_backfill_updates[to_remove[i].get<0>()]; // add empty stat!
