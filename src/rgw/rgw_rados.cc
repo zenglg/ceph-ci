@@ -12980,11 +12980,9 @@ int RGWRados::cls_user_sync_bucket_stats(rgw_raw_obj& user_obj, const RGWBucketI
 
   bucket_info.bucket.convert(&entry.bucket);
 
-  map<string, struct rgw_bucket_dir_header>::iterator hiter = headers.begin();
-  for (; hiter != headers.end(); ++hiter) {
-    map<uint8_t, struct rgw_bucket_category_stats>::iterator iter = hiter->second.stats.begin();
-    for (; iter != hiter->second.stats.end(); ++iter) {
-      struct rgw_bucket_category_stats& header_stats = iter->second;
+  for (auto hiter : headers) {
+    for (const auto& iter : hiter.second.stats) {
+      const struct rgw_bucket_category_stats& header_stats = iter.second;
       entry.size += header_stats.total_size;
       entry.size_rounded += header_stats.total_size_rounded;
       entry.count += header_stats.num_entries;
@@ -13021,11 +13019,9 @@ int RGWRados::cls_user_get_bucket_stats(rgw_bucket& bucket, cls_user_bucket_entr
 
   bucket.convert(&entry.bucket);
 
-  map<string, struct rgw_bucket_dir_header>::iterator hiter = headers.begin();
-  for (; hiter != headers.end(); ++hiter) {
-    map<uint8_t, struct rgw_bucket_category_stats>::iterator iter = hiter->second.stats.begin();
-    for (; iter != hiter->second.stats.end(); ++iter) {
-      struct rgw_bucket_category_stats& header_stats = iter->second;
+  for (const auto& hiter : headers) {
+    for (const auto& iter : hiter.second.stats) {
+      const struct rgw_bucket_category_stats& header_stats = iter.second;
       entry.size += header_stats.total_size;
       entry.size_rounded += header_stats.total_size_rounded;
       entry.count += header_stats.num_entries;
