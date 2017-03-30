@@ -20,6 +20,9 @@
 #include "common/Mutex.h"
 #include "common/Thread.h"
 
+#include "osdc/Objecter.h"
+#include "client/Client.h"
+
 #include "DaemonState.h"
 #include "ClusterState.h"
 
@@ -34,6 +37,7 @@ class PyModules
   ClusterState &cluster_state;
   MonClient &monc;
   Objecter &objecter;
+  Client   &client;
   Finisher &finisher;
 
   mutable Mutex lock{"PyModules"};
@@ -44,7 +48,7 @@ public:
   static constexpr auto config_prefix = "mgr.";
 
   PyModules(DaemonStateIndex &ds, ClusterState &cs,
-            MonClient &mc, Objecter &objecter,
+            MonClient &mc, Objecter &objecter, Client &client_,
             Finisher &f);
 
   ~PyModules();
@@ -52,6 +56,7 @@ public:
   // FIXME: wrap for send_command?
   MonClient &get_monc() {return monc;}
   Objecter  &get_objecter() {return objecter;}
+  Client    &get_client() {return client;}
 
   PyObject *get_python(const std::string &what);
   PyObject *get_server_python(const std::string &hostname);

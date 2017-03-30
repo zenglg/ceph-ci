@@ -33,10 +33,10 @@
 #define dout_prefix *_dout << "mgr " << __func__ << " "
 
 PyModules::PyModules(DaemonStateIndex &ds, ClusterState &cs,
-                     MonClient &mc, Objecter &objecter_,
+                     MonClient &mc, Objecter &objecter_, Client &client_,
                      Finisher &f)
   : daemon_state(ds), cluster_state(cs), monc(mc), objecter(objecter_),
-    finisher(f)
+    client(client_), finisher(f)
 {}
 
 // we can not have the default destructor in header, because ServeThread is
