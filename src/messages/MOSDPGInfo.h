@@ -75,9 +75,10 @@ public:
     for (vector<pair<pg_notify_t,PastIntervals> >::iterator p = pg_list.begin();
 	 p != pg_list.end();
 	 p++) {
-      if (features & CEPH_FEATURE_SERVER_LUMINOUS) {
+      if (HAVE_FEATURE(features, SERVER_LUMINOUS)) {
 	::encode(p->second, payload);
       } else {
+	header.version = 4;
 	p->second.encode_classic(payload);
       }
     }

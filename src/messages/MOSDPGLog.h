@@ -80,9 +80,10 @@ public:
     ::encode(log, payload);
     ::encode(missing, payload);
     ::encode(query_epoch, payload);
-    if (features & CEPH_FEATURE_SERVER_LUMINOUS) {
+    if (HAVE_FEATURE(features, SERVER_LUMINOUS)) {
       ::encode(past_intervals, payload);
     } else {
+      header.version = 4;
       past_intervals.encode_classic(payload);
     }
     ::encode(to, payload);
