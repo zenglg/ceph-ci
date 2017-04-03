@@ -6,3 +6,7 @@ overrides:
         osd op queue cut off: debug_random
         osd debug verify missing on start: true
         osd debug verify cached snaps: true
+        bluestore latency managed throttle: true
+        bluestore throttle latency min: 300
+        bluestore throttle latency max: 500
+        bluestore max bytes: 32768
