@@ -132,11 +132,7 @@ struct PGLog : DoutPrefixProvider {
       rollback_info_trimmed_to_riter = log.rbegin();
       reset_recovery_pointers();
     }
-    void clear() {
-      rollback_info_trimmed_to = head;
-      rollback_info_trimmed_to_riter = log.rbegin();
-      zero();
-    }
+
     void reset_recovery_pointers() {
       complete_to = log.end();
       last_requested = 0;
@@ -510,8 +506,6 @@ public:
 
 
   void reset_backfill();
-
-  void clear();
 
   //////////////////// get or set missing ////////////////////
 

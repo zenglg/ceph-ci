@@ -152,14 +152,6 @@ void PGLog::reset_backfill()
   dirty_divergent_priors = true;
 }
 
-void PGLog::clear() {
-  divergent_priors.clear();
-  missing.clear();
-  log.clear();
-  log_keys_debug.clear();
-  undirty();
-}
-
 void PGLog::clear_info_log(
   spg_t pgid,
   ObjectStore::Transaction *t) {
