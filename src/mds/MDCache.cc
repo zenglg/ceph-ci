@@ -203,6 +203,9 @@ MDCache::MDCache(MDSRank *m, PurgeQueue &purge_queue_) :
   lru.lru_set_max(g_conf->mds_cache_size);
   lru.lru_set_midpoint(g_conf->mds_cache_mid);
 
+  bottom_lru.lru_set_max(0);
+  bottom_lru.lru_set_midpoint(0);
+
   decayrate.set_halflife(g_conf->mds_decay_halflife);
 
   did_shutdown_log_cap = false;
@@ -3638,7 +3641,7 @@ void MDCache::remove_inode_recursive(CInode *in)
       CDentry::linkage_t *dnl = dn->get_linkage();
       if (dnl->is_primary()) {
 	CInode *tin = dnl->get_inode();
-	subdir->unlink_inode(dn);
+	subdir->unlink_inode(dn, false);
 	remove_inode_recursive(tin);
       }
       subdir->remove_dentry(dn);
@@ -6392,7 +6395,8 @@ bool MDCache::trim(int max, int count)
     if (max <= 0)
       return false;
   }
-  dout(7) << "trim max=" << max << "  cur=" << lru.lru_get_size() << dendl;
+  dout(7) << "trim max=" << max << "  cur=" << lru.lru_get_size()
+	  << "/" << bottom_lru.lru_get_size() << dendl;
 
   // process delayed eval_stray()
   stray_manager.advance_delayed();
@@ -6402,21 +6406,25 @@ bool MDCache::trim(int max, int count)
   int unexpirable = 0;
   list<CDentry*> unexpirables;
 
+  for (;;) {
+    CDentry *dn = static_cast<CDentry*>(bottom_lru.lru_expire());
+    if (!dn)
+      break;
+    if (trim_dentry(dn, expiremap)) {
+      unexpirables.push_back(dn);
+      ++unexpirable;
+    }
+  }
+
+  for(auto dn : unexpirables)
+    bottom_lru.lru_insert_mid(dn);
+  unexpirables.clear();
+
   // trim dentries from the LRU: only enough to satisfy `max`,
-  // unless we see null dentries at the bottom of the LRU,
-  // in which case trim all those.
-  bool trimming_nulls = true;
-  while (trimming_nulls || lru.lru_get_size() + unexpirable > (unsigned)max) {
+  while (lru.lru_get_size() + unexpirable > (unsigned)max) {
     CDentry *dn = static_cast<CDentry*>(lru.lru_expire());
     if (!dn) {
       break;
-    }
-    if (!dn->get_linkage()->is_null()) {
-      trimming_nulls = false;
-      if (lru.lru_get_size() + unexpirable < (unsigned)max) {
-	unexpirables.push_back(dn);
-	break;
-      }
     }
     if ((is_standby_replay && dn->get_linkage()->inode &&
         dn->get_linkage()->inode->item_open_file.is_on_list()) ||
@@ -6425,10 +6433,9 @@ bool MDCache::trim(int max, int count)
       ++unexpirable;
     }
   }
-  for(list<CDentry*>::iterator i = unexpirables.begin();
-      i != unexpirables.end();
-      ++i)
-    lru.lru_insert_mid(*i);
+  for(auto dn : unexpirables)
+    lru.lru_insert_mid(dn);
+  unexpirables.clear();
 
   // trim non-auth, non-bound subtrees
   for (map<CDir*, set<CDir*> >::iterator p = subtrees.begin();
@@ -6565,7 +6572,7 @@ bool MDCache::trim_dentry(CDentry *dn, map<mds_rank_t, MCacheExpire*>& expiremap
   // unlink the dentry
   if (dnl->is_remote()) {
     // just unlink.
-    dir->unlink_inode(dn);
+    dir->unlink_inode(dn, false);
   } else if (dnl->is_primary()) {
     // expire the inode, too.
     CInode *in = dnl->get_inode();
@@ -6735,7 +6742,7 @@ bool MDCache::trim_inode(CDentry *dn, CInode *in, CDir *con, map<mds_rank_t, MCa
     
   // unlink
   if (dn)
-    dn->get_dir()->unlink_inode(dn);
+    dn->get_dir()->unlink_inode(dn, false);
   remove_inode(in);
   return false;
 }
@@ -6772,14 +6779,23 @@ void MDCache::trim_non_auth()
   CDentry *first_auth = 0;
   
   // trim non-auth items from the lru
-  while (lru.lru_get_size() > 0) {
-    CDentry *dn = static_cast<CDentry*>(lru.lru_expire());
-    if (!dn) break;
+  for (;;) {
+    CDentry *dn = NULL;
+    if (bottom_lru.lru_get_size() > 0)
+      dn = static_cast<CDentry*>(bottom_lru.lru_expire());
+    if (!dn && lru.lru_get_size() > 0)
+      dn = static_cast<CDentry*>(lru.lru_expire());
+    if (!dn)
+	break;
+
     CDentry::linkage_t *dnl = dn->get_linkage();
 
     if (dn->is_auth()) {
       // add back into lru (at the top)
-      lru.lru_insert_top(dn);
+      if (dn->state_test(CDentry::STATE_BOTTOMLRU))
+	bottom_lru.lru_insert_mid(dn);
+      else
+	lru.lru_insert_top(dn);
 
       if (dnl->is_remote() && dnl->get_inode() && !dnl->get_inode()->is_auth())
 	dn->unlink_remote(dnl);
@@ -6798,7 +6814,7 @@ void MDCache::trim_non_auth()
       // unlink the dentry
       dout(10) << " removing " << *dn << dendl;
       if (dnl->is_remote()) {
-	dir->unlink_inode(dn);
+	dir->unlink_inode(dn, false);
       } 
       else if (dnl->is_primary()) {
 	CInode *in = dnl->get_inode();
@@ -6810,7 +6826,7 @@ void MDCache::trim_non_auth()
 	  assert(!subdir->is_subtree_root());
 	  in->close_dirfrag(subdir->dirfrag().frag);
 	}
-	dir->unlink_inode(dn);
+	dir->unlink_inode(dn, false);
 	remove_inode(in);
       } 
       else {
@@ -6836,7 +6852,8 @@ void MDCache::trim_non_auth()
        ++p) 
     p->first->put(CDir::PIN_SUBTREETEMP);
 
-  if (lru.lru_get_size() == 0) {
+  if (lru.lru_get_size() == 0 &&
+      bottom_lru.lru_get_size() == 0) {
     // root, stray, etc.?
     ceph::unordered_map<vinodeno_t,CInode*>::iterator p = inode_map.begin();
     while (p != inode_map.end()) {
@@ -6911,7 +6928,7 @@ bool MDCache::trim_non_auth_subtree(CDir *dir)
       }
       if (!keep_inode) { // remove it!
         dout(20) << "trim_non_auth_subtree(" << dir << ") removing inode " << in << " with dentry" << dn << dendl;
-        dir->unlink_inode(dn);
+        dir->unlink_inode(dn, false);
         remove_inode(in);
 	assert(!dir->has_bloom());
         dir->remove_dentry(dn);
@@ -6925,7 +6942,7 @@ bool MDCache::trim_non_auth_subtree(CDir *dir)
     } else { // just remove it
       dout(20) << "trim_non_auth_subtree(" << dir << ") removing dentry " << dn << dendl;
       if (dnl->is_remote())
-        dir->unlink_inode(dn);
+        dir->unlink_inode(dn, false);
       dir->remove_dentry(dn);
     }
   }
@@ -7412,7 +7429,7 @@ void MDCache::shutdown_check()
   mds->timer.add_event_after(g_conf->mds_shutdown_check, new C_MDC_ShutdownCheck(this));
 
   // this
-  dout(0) << "lru size now " << lru.lru_get_size() << dendl;
+  dout(0) << "lru size now " << lru.lru_get_size() << "/" << bottom_lru.lru_get_size() << dendl;
   dout(0) << "log len " << mds->mdlog->get_num_events() << dendl;
 
 
@@ -7464,7 +7481,7 @@ bool MDCache::shutdown_pass()
 
   // trim cache
   trim(0);
-  dout(5) << "lru size now " << lru.lru_get_size() << dendl;
+  dout(5) << "lru size now " << lru.lru_get_size() << "/" << bottom_lru.lru_get_size() << dendl;
 
   // SUBTREES
   int num_auth_subtree = 0;
@@ -7568,8 +7585,8 @@ bool MDCache::shutdown_pass()
   }
 
   // trim what we can from the cache
-  if (lru.lru_get_size() > 0) {
-    dout(7) << "there's still stuff in the cache: " << lru.lru_get_size() << dendl;
+  if (lru.lru_get_size() > 0 || bottom_lru.lru_get_size() > 0) {
+    dout(7) << "there's still stuff in the cache: " << lru.lru_get_size() << "/" << bottom_lru.lru_get_size()  << dendl;
     show_cache();
     //dump();
     return false;
@@ -10457,7 +10474,6 @@ void MDCache::handle_dentry_unlink(MDentryUnlink *m)
 	    !in->state_test(CInode::STATE_EXPORTINGCAPS))
 	  migrator->export_caps(in);
 	
-	touch_dentry_bottom(straydn); // move stray to end of lru
 	straydn = NULL;
       } else {
 	assert(!straydn);
@@ -10465,9 +10481,6 @@ void MDCache::handle_dentry_unlink(MDentryUnlink *m)
 	dn->dir->unlink_inode(dn);
       }
       assert(dnl->is_null());
-      
-      // move to bottom of lru
-      touch_dentry_bottom(dn);
     }
   }
 
