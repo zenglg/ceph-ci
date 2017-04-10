@@ -1304,8 +1304,7 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
 	    dout(0) << ss.str() << dendl;
 	    mds->clog->warn(ss);
 	  }
-	  dir->unlink_inode(dn);
-          mds->mdcache->touch_dentry_bottom(dn);
+	  dir->unlink_inode(dn, false);
 	}
 	if (unlinked.count(in))
 	  linked.insert(in);
@@ -1317,9 +1316,7 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
 	if (dn->get_linkage()->get_inode() != in && in->get_parent_dn()) {
 	  dout(10) << "EMetaBlob.replay unlinking " << *in << dendl;
 	  unlinked[in] = in->get_parent_dir();
-          CDentry *unlinked_dn = in->get_parent_dn();
 	  in->get_parent_dir()->unlink_inode(in->get_parent_dn());
-          mds->mdcache->touch_dentry_bottom(unlinked_dn);
 	}
 	if (dn->get_linkage()->get_inode() != in) {
 	  if (!dn->get_linkage()->is_null()) { // note: might be remote.  as with stray reintegration.
@@ -1331,8 +1328,7 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
 	      dout(0) << ss.str() << dendl;
 	      mds->clog->warn(ss);
 	    }
-	    dir->unlink_inode(dn);
-            mds->mdcache->touch_dentry_bottom(dn);
+	    dir->unlink_inode(dn, false);
 	  }
 	  if (unlinked.count(in))
 	    linked.insert(in);
@@ -1377,8 +1373,7 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
 	       << " " << *dn->get_linkage()->get_inode() << " should be remote " << p->ino;
 	    dout(0) << ss.str() << dendl;
 	  }
-	  dir->unlink_inode(dn);
-          mds->mdcache->touch_dentry_bottom(dn);
+	  dir->unlink_inode(dn, false);
 	}
 	dir->link_remote_inode(dn, p->ino, p->d_type);
 	dn->set_version(p->dnv);
@@ -1413,7 +1408,6 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
 	    if (dn->get_linkage()->is_primary())
 	      unlinked[in] = dir;
 	    dir->unlink_inode(dn);
-            mds->mdcache->touch_dentry_bottom(dn);
 	  }
 	}
 	dn->set_version(p->dnv);
@@ -1427,7 +1421,6 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
 
       // Make null dentries the first things we trim
       dout(10) << "EMetaBlob.replay pushing to bottom of lru " << *dn << dendl;
-      mds->mdcache->touch_dentry_bottom(dn);
     }
   }
 
@@ -1636,7 +1629,6 @@ void EMetaBlob::replay(MDSRank *mds, LogSegment *logseg, MDSlaveUpdate *slaveup)
       if (parent) {
         dout(10) << "EMetaBlob.replay unlinked from dentry " << *parent << dendl;
         assert(parent->get_linkage()->is_null());
-        mds->mdcache->touch_dentry_bottom(parent);
       }
     } else {
       dout(10) << "EMetaBlob.replay destroyed " << *p << ", not in cache" << dendl;
