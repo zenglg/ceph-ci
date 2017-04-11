@@ -2811,7 +2811,7 @@ void pg_history_t::generate_test_instances(list<pg_history_t*>& o)
 
 void pg_info_t::encode(bufferlist &bl) const
 {
-  ENCODE_START(31, 26, bl);
+  ENCODE_START(32, 26, bl);
   ::encode(pgid.pgid, bl);
   ::encode(last_update, bl);
   ::encode(last_complete, bl);
@@ -2830,12 +2830,13 @@ void pg_info_t::encode(bufferlist &bl) const
   ::encode(pgid.shard, bl);
   ::encode(last_backfill, bl);
   ::encode(last_backfill_bitwise, bl);
+  ::encode(last_interval_started, bl);
   ENCODE_FINISH(bl);
 }
 
 void pg_info_t::decode(bufferlist::iterator &bl)
 {
-  DECODE_START_LEGACY_COMPAT_LEN(31, 26, 26, bl);
+  DECODE_START_LEGACY_COMPAT_LEN(32, 26, 26, bl);
   if (struct_v < 23) {
     old_pg_t opgid;
     ::decode(opgid, bl);
@@ -2883,6 +2884,11 @@ void pg_info_t::decode(bufferlist::iterator &bl)
   } else {
     last_backfill = old_last_backfill;
     last_backfill_bitwise = false;
+  }
+  if (struct_v >= 32) {
+    ::decode(last_interval_started, bl);
+  } else {
+    last_interval_started = last_epoch_started;
   }
   DECODE_FINISH(bl);
 }
@@ -3355,7 +3361,8 @@ public:
     return unique_ptr<PastIntervals::interval_rep>(new pi_compact_rep(*this));
   }
   ostream &print(ostream &out) const override {
-    return out << "([" << first << "," << last << "] " << intervals << ")";
+    return out << "([" << first << "," << last
+	       << "] intervals=" << intervals << ")";
   }
   void encode(bufferlist &bl) const override {
     ENCODE_START(1, 1, bl);
