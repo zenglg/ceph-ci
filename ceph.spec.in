@@ -305,7 +305,15 @@ License:        LGPL-2.1 and CC-BY-SA-1.0 and GPL-2.0 and BSL-1.0 and GPL-2.0-wi
 Group:          System/Filesystems
 %endif
 Requires:       ceph-base = %{epoch}:%{version}-%{release}
-
+Requires:       python-pecan
+%if 0%{?fedora} || 0%{?rhel}
+Requires:       pyOpenSSL
+Requires:       python-werkzeug
+%endif
+%if 0%{?suse_version}
+Requires:       python-pyOpenSSL
+Requires:       python-Werkzeug
+%endif
 %description mgr
 ceph-mgr enables python modules that provide services (such as the REST
 module derived from Calamari) and expose CLI hooks.  ceph-mgr gathers
