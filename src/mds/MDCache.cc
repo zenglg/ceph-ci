@@ -742,11 +742,6 @@ CDentry *MDCache::get_or_create_stray_dentry(CInode *in)
     assert(straydn->get_projected_linkage()->is_null());
   }
 
-  // Notify even if a null dentry already existed, because
-  // StrayManager counts the number of stray inodes, not the
-  // number of dentries in the directory.
-  stray_manager.notify_stray_created();
-
   straydn->state_set(CDentry::STATE_STRAY);
   return straydn;
 }
@@ -9389,7 +9384,6 @@ void MDCache::scan_stray_dir(dirfrag_t next)
     for (CDir::map_t::iterator q = dir->items.begin(); q != dir->items.end(); ++q) {
       CDentry *dn = q->second;
       dn->state_set(CDentry::STATE_STRAY);
-      stray_manager.notify_stray_created();
       CDentry::linkage_t *dnl = dn->get_projected_linkage();
       if (dnl->is_primary()) {
 	CInode *in = dnl->get_inode();
