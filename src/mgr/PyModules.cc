@@ -451,7 +451,7 @@ void PyModules::shutdown()
   // Signal modules to drop out of serve() and/or tear down resources
   C_SaferCond shutdown_called;
   C_GatherBuilder gather(g_ceph_context);
-  for (auto i : modules) {
+  for (auto &i : modules) {
     auto module = i.second.get();
     auto shutdown_cb = gather.new_sub();
     finisher.queue(new FunctionContext([module, shutdown_cb](int r){
