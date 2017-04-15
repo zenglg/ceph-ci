@@ -48,6 +48,7 @@ public:
   static constexpr auto config_prefix = "mgr.";
 
   PyModules(DaemonStateIndex &ds, ClusterState &cs, MonClient &mc,
+            Objecter &objecter_, Client &client_,
             Finisher &f);
 
   ~PyModules();
