@@ -50,7 +50,7 @@ void MgrClient::shutdown()
   Mutex::Locker l(lock);
 
   if (connect_retry_callback) {
-    timer.cancel_cevent(connect_retry_callback);
+    timer.cancel_event(connect_retry_callback);
     connect_retry_callback = nullptr;
   }
   if (report_callback) {
