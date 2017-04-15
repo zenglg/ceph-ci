@@ -226,7 +226,6 @@ void StrayManager::_purge_stray_purged(
     mds->mdlog->submit_entry(le, new C_PurgeStrayLogged(this, dn, pdv,
           mds->mdlog->get_current_segment()));
 
-    num_strays--;
     logger->set(l_mdc_num_strays, num_strays);
   }
 }

@@ -540,6 +540,9 @@ void CDir::link_inode_work( CDentry *dn, CInode *in)
   assert(dn->get_linkage()->get_inode() == in);
   assert(in->get_parent_dn() == dn);
 
+  if (is_auth() && inode->is_stray())
+    cache->notify_stray_created();
+
   // set inode version
   //in->inode.version = dn->get_version();
   
@@ -621,6 +624,9 @@ void CDir::unlink_inode_work( CDentry *dn )
     if (in->auth_pins + in->nested_auth_pins)
       dn->adjust_nested_auth_pins(0 - (in->auth_pins + in->nested_auth_pins), 0 - in->auth_pins, NULL);
     
+    if (is_auth() && inode->is_stray())
+      cache->notify_stray_removed();
+
     // detach inode
     in->remove_primary_parent(dn);
     dn->get_linkage()->inode = 0;
