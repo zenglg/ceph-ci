@@ -49,6 +49,15 @@ void MgrClient::shutdown()
 {
   Mutex::Locker l(lock);
 
+  if (connect_retry_callback) {
+    timer.cancel_cevent(connect_retry_callback);
+    connect_retry_callback = nullptr;
+  }
+  if (report_callback) {
+    timer.cancel_event(report_callback);
+    report_callback = nullptr;
+  }
+
   // forget about in-flight commands if we are prematurely shut down
   // (e.g., by control-C)
   command_table.clear();
