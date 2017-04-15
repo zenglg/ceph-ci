@@ -48,7 +48,8 @@ Mgr::Mgr(MonClient *monc_, Messenger *clientm_, Objecter *objecter_,
   finisher(g_ceph_context, "Mgr", "mgr-fin"),
   py_modules(daemon_state, cluster_state, *monc, finisher),
   cluster_state(monc, nullptr),
-  server(monc, daemon_state, cluster_state, py_modules, clog_, audit_clog_),
+  server(monc, finisher, daemon_state, cluster_state, py_modules,
+         clog_, audit_clog_),
   initialized(false),
   initializing(false)
 {
@@ -357,11 +358,17 @@ void Mgr::shutdown()
   // give up the lock for us.
   Mutex::Locker l(lock);
 
+  monc->sub_unwant("log-info");
+  monc->sub_unwant("mgrdigest");
+  monc->sub_unwant("fsmap");
+
   // First stop the server so that we're not taking any more incoming requests
   server.shutdown();
 
+  lock.Unlock();
   // after the messenger is stopped, signal modules to shutdown via finisher
   py_modules.shutdown();
+  lock.Lock();
 
   // Then stop the finisher to ensure its enqueued contexts aren't going
   // to touch references to the things we're about to tear down
