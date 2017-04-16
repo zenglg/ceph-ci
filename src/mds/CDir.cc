@@ -329,7 +329,9 @@ CDentry* CDir::add_null_dentry(const string& dname,
   CDentry* dn = new CDentry(dname, inode->hash_dentry_name(dname), first, last);
   if (is_auth()) 
     dn->state_set(CDentry::STATE_AUTH);
-  cache->lru.lru_insert_mid(dn);
+
+  cache->bottom_lru.lru_insert_mid(dn);
+  dn->state_set(CDentry::STATE_BOTTOMLRU);
 
   dn->dir = this;
   dn->version = get_projected_version();
@@ -483,7 +485,10 @@ void CDir::remove_dentry(CDentry *dn)
   if (dn->is_dirty())
     dn->mark_clean();
 
-  cache->lru.lru_remove(dn);
+  if (dn->state_test(CDentry::STATE_BOTTOMLRU))
+    cache->bottom_lru.lru_remove(dn);
+  else
+    cache->lru.lru_remove(dn);
   delete dn;
 
   // unpin?
@@ -504,6 +509,12 @@ void CDir::link_remote_inode(CDentry *dn, inodeno_t ino, unsigned char d_type)
 
   dn->get_linkage()->set_remote(ino, d_type);
 
+  if (dn->state_test(CDentry::STATE_BOTTOMLRU)) {
+    cache->bottom_lru.lru_remove(dn);
+    cache->lru.lru_insert_mid(dn);
+    dn->state_clear(CDentry::STATE_BOTTOMLRU);
+  }
+
   if (dn->last == CEPH_NOSNAP) {
     num_head_items++;
     num_head_null--;
@@ -523,6 +534,13 @@ void CDir::link_primary_inode(CDentry *dn, CInode *in)
   in->set_primary_parent(dn);
 
   link_inode_work(dn, in);
+
+  if (dn->state_test(CDentry::STATE_BOTTOMLRU) &&
+      (is_auth() || !inode->is_stray())) {
+    cache->bottom_lru.lru_remove(dn);
+    cache->lru.lru_insert_mid(dn);
+    dn->state_clear(CDentry::STATE_BOTTOMLRU);
+  }
   
   if (dn->last == CEPH_NOSNAP) {
     num_head_items++;
@@ -558,7 +576,7 @@ void CDir::link_inode_work( CDentry *dn, CInode *in)
     in->move_to_realm(inode->find_snaprealm());
 }
 
-void CDir::unlink_inode(CDentry *dn)
+void CDir::unlink_inode(CDentry *dn, bool adjust_lru)
 {
   if (dn->get_linkage()->is_primary()) {
     dout(12) << "unlink_inode " << *dn << " " << *dn->get_linkage()->get_inode() << dendl;
@@ -567,6 +585,12 @@ void CDir::unlink_inode(CDentry *dn)
   }
 
   unlink_inode_work(dn);
+
+  if (adjust_lru && !dn->state_test(CDentry::STATE_BOTTOMLRU)) {
+    cache->lru.lru_remove(dn);
+    cache->bottom_lru.lru_insert_mid(dn);
+    dn->state_set(CDentry::STATE_BOTTOMLRU);
+  }
 
   if (dn->last == CEPH_NOSNAP) {
     num_head_items--;
@@ -684,7 +708,7 @@ void CDir::remove_null_dentries() {
 void CDir::try_remove_dentries_for_stray()
 {
   dout(10) << __func__ << dendl;
-  assert(inode->inode.nlink == 0);
+  assert(get_parent_dir()->inode->is_stray());
 
   // clear dirty only when the directory was not snapshotted
   bool clear_dirty = !inode->snaprealm;
@@ -725,15 +749,6 @@ void CDir::try_remove_dentries_for_stray()
 
   if (clear_dirty && is_dirty())
     mark_clean();
-}
-
-void CDir::touch_dentries_bottom() {
-  dout(12) << "touch_dentries_bottom " << *this << dendl;
-
-  for (CDir::map_t::iterator p = items.begin();
-       p != items.end();
-       ++p)
-    inode->mdcache->touch_dentry_bottom(p->second);
 }
 
 bool CDir::try_trim_snap_dentry(CDentry *dn, const set<snapid_t>& snaps)
@@ -1423,9 +1438,11 @@ void CDir::fetch(MDSInternalContextBase *c, const string& want_dn, bool ignore_a
   }
 
   // unlinked directory inode shouldn't have any entry
-  if (inode->inode.nlink == 0 && !inode->snaprealm) {
+  if (!inode->is_base() && get_parent_dir()->inode->is_stray() &&
+      !inode->snaprealm) {
     dout(7) << "fetch dirfrag for unlinked directory, mark complete" << dendl;
     if (get_version() == 0) {
+      assert(inode->is_auth());
       set_version(1);
 
       if (state_test(STATE_REJOINUNDEF)) {
@@ -2001,14 +2018,6 @@ void CDir::commit(version_t want, MDSInternalContextBase *c, bool ignore_authpin
   assert(is_auth());
   assert(ignore_authpinnability || can_auth_pin());
 
-  if (inode->inode.nlink == 0 && !inode->snaprealm) {
-    dout(7) << "commit dirfrag for unlinked directory, mark clean" << dendl;
-    try_remove_dentries_for_stray();
-    if (c)
-      cache->mds->queue_waiter(c);
-    return;
-  }
-
   // note: queue up a noop if necessary, so that we always
   // get an auth_pin.
   if (!c)
@@ -2266,9 +2275,10 @@ void CDir::_committed(int r, version_t v)
   if (r < 0) {
     // the directory could be partly purged during MDS failover
     if (r == -ENOENT && committed_version == 0 &&
-	inode->inode.nlink == 0 && inode->snaprealm) {
-      inode->state_set(CInode::STATE_MISSINGOBJS);
+	!inode->is_base() && get_parent_dir()->inode->is_stray()) {
       r = 0;
+      if (inode->snaprealm)
+	inode->state_set(CInode::STATE_MISSINGOBJS);
     }
     if (r < 0) {
       dout(1) << "commit error " << r << " v " << v << dendl;
@@ -2359,7 +2369,8 @@ void CDir::_committed(int r, version_t v)
   } 
 
   // try drop dentries in this dirfrag if it's about to be purged
-  if (inode->inode.nlink == 0 && inode->snaprealm)
+  if (!inode->is_base() && get_parent_dir()->inode->is_stray() &&
+      inode->snaprealm)
     cache->maybe_eval_stray(inode, true);
 
   // unpin if we kicked the last waiter.
