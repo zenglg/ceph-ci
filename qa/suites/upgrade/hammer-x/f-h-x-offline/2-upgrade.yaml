@@ -1,4 +1,14 @@
 tasks:
+- install.upgrade:
+    mon.a:
+      branch: hammer
+- ceph.restart:
+    daemons: [mon.a, mon.b, mon.c]
+- ceph.restart:
+    daemons: [osd.0, osd.1, osd.2]
+    wait-for-healthy: true
+    wait-for-osds-up: true
+- print: '**** done upgrade from firefly to hammer'
 - ceph.stop: [mon.a, mon.b, mon.c]
 - ceph.stop: [osd.0, osd.1, osd.2]
 - install.upgrade:
@@ -11,6 +21,7 @@ tasks:
     daemons: [mon.a, mon.b, mon.c]
     wait-for-healthy: false
     wait-for-osds-up: false
+- print: '**** done upgrade from hammer to x'
 - exec:
     mon.a:
       - ceph osd down 0 1 2
