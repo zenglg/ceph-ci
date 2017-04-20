@@ -463,6 +463,7 @@ int MonClient::authenticate(double timeout)
   if (active_con) {
     ldout(cct, 5) << __func__ << " success, global_id "
 		  << active_con->get_global_id() << dendl;
+    authenticated = true;
   }
 
   if (authenticate_err < 0 && no_keyring_disabled_cephx) {
