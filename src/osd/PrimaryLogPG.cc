@@ -4760,6 +4760,9 @@ int PrimaryLogPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	} else {
 	  int r = pgbackend->objects_read_sync(
 	    soid, op.extent.offset, op.extent.length, op.flags, &osd_op.outdata);
+	  if (r == -EIO) {
+	    r = rep_repair_primary_object(soid, ctx->op);
+	  }
 	  if (r >= 0)
 	    op.extent.length = r;
 	  else {
@@ -4892,6 +4895,9 @@ int PrimaryLogPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	    bufferlist t;
 	    uint64_t len = miter->first - last;
 	    r = pgbackend->objects_read_sync(soid, last, len, op.flags, &t);
+	    if (r == -EIO) {
+	      r = rep_repair_primary_object(soid, ctx->op);
+	    }
 	    if (r < 0) {
 	      osd->clog->error() << coll << " " << soid
 				 << " sparse-read failed to read: "
@@ -13820,6 +13826,71 @@ void PrimaryLogPG::_scrub_finish()
 bool PrimaryLogPG::check_osdmap_full(const set<pg_shard_t> &missing_on)
 {
     return osd->check_osdmap_full(missing_on);
+}
+
+int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef op)
+{
+  // Only supports replicated pools
+  assert(!pool.info.require_rollback());
+  assert(is_primary());
+
+  // Get non-primary shards
+  list<pg_shard_t> op_shards;
+  for (auto&& i : actingset) {
+    if (i == pg_whoami) continue; // Exclude self (primary)
+    op_shards.push_back(i);
+  }
+  if (op_shards.empty()) {
+    dout(0) << __func__ << " No other replicas available for " << soid << dendl;
+    return -EIO;
+  }
+
+  dout(10) << __func__ << " " << soid
+	   << " peers osd.{" << op_shards << "}" << dendl;
+
+  assert(!pg_log.get_missing().is_missing(soid));
+  bufferlist bv;
+  int r = get_pgbackend()->objects_get_attr(soid, OI_ATTR, &bv);
+  if (r < 0)
+    return r;
+  object_info_t oi;
+  try {
+    bufferlist::iterator bliter = bv.begin();
+    ::decode(oi, bliter);
+  } catch (...) {
+    dout(0) << __func__ << ":  bad object_info_t: " << soid << dendl;
+    // XXX: Too bad I can't get the version to recover, so can't repair
+    return -EIO;
+  }
+
+  pg_log.missing_add(soid, oi.version, eversion_t());
+
+  pg_log.set_last_requested(0);
+
+  missing_loc.add_missing(soid, oi.version, eversion_t());
+  for (auto &&i : op_shards)
+    missing_loc.add_location(soid, i);
+
+  waiting_for_unreadable_object[soid].push_back(op);
+  op->mark_delayed("waiting for missing object");
+
+  if (is_clean()) {
+    // XXX: Using clean state to check that we haven't already triggered this recovery
+    state_clear(PG_STATE_CLEAN);
+    queue_peering_event(
+      CephPeeringEvtRef(
+	std::make_shared<CephPeeringEvt>(
+	  get_osdmap()->get_epoch(),
+	  get_osdmap()->get_epoch(),
+	  DoRecovery())));
+  } else {
+    // A prior error must have already cleared clean state and queued recovery
+    // or a map change has triggered re-peering.
+    // Not inlining the recovery by calling maybe_kick_recovery(soid);
+    dout(5) << __func__<< ": Read error but pg isn't clean" << dendl;
+  }
+
+  return -EAGAIN;
 }
 
 /*---SnapTrimmer Logging---*/
