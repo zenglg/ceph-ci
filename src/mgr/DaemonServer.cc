@@ -464,29 +464,29 @@ bool DaemonServer::handle_command(MCommand *m)
     return _reply(m, r, ss.str(), odata);
   }
 
+  _generate_command_map(cmdmap, param_str_map);
+
   // lookup command
   mgr_cmd = _get_mgrcommand(prefix, mgr_commands,
                                               ARRAY_SIZE(mgr_commands));
-  _generate_command_map(cmdmap, param_str_map);
-  if (!mgr_cmd) {
-    return _reply(m, -EINVAL, "command not supported", odata);
-  }
+  if (mgr_cmd) {
 
-  // validate user's permissions for requested command
-  if (!_allowed_command(session.get(), mgr_cmd->module, prefix, cmdmap,
+    // validate user's permissions for requested command
+    if (!_allowed_command(session.get(), mgr_cmd->module, prefix, cmdmap,
                         param_str_map, mgr_cmd)) {
-    dout(1) << __func__ << " access denied" << dendl;
-    audit_clog->info() << "from='" << session->inst << "' "
-		       << "entity='" << session->entity_name << "' "
-		       << "cmd=" << m->cmd << ":  access denied";
-    return _reply(m, -EACCES, "access denied", odata);
+      dout(1) << __func__ << " access denied" << dendl;
+      audit_clog->info() << "from='" << session->inst << "' "
+		         << "entity='" << session->entity_name << "' "
+		         << "cmd=" << m->cmd << ":  access denied";
+      return _reply(m, -EACCES, "access denied", odata);
+    }
+
+    audit_clog->debug()
+      << "from='" << session->inst << "' "
+      << "entity='" << session->entity_name << "' "
+      << "cmd=" << m->cmd << ": dispatch";
+
   }
-
-  audit_clog->debug()
-    << "from='" << session->inst << "' "
-    << "entity='" << session->entity_name << "' "
-    << "cmd=" << m->cmd << ": dispatch";
-
   // -----------
   // PG commands
 
@@ -657,6 +657,9 @@ bool DaemonServer::handle_command(MCommand *m)
     odata.append(ds);
     return _reply(m, 0, ss.str(), odata);
   }
+
+  // If we get here, the command is not supported
+  return _reply(m, -EINVAL, "command not supported", odata);
 }
 
 bool DaemonServer::_reply(MCommand* m,
