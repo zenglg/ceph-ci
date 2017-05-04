@@ -33,15 +33,16 @@
 void IOContext::aio_wait()
 {
   std::unique_lock<std::mutex> l(lock);
-  // see _aio_thread for waker logic
-  ++num_waiting;
-  while (num_running.load() > 0 || num_reading.load() > 0) {
+  // see aio_wake for waker.  note that even if the aios have completed
+  // we wait until aio_wake is called to avoid potential for use-after-free.
+  assert(priv == nullptr);
+  while (num_running.load() > 0 || num_reading.load() > 0 || unwoken > 0) {
     dout(10) << __func__ << " " << this
 	     << " waiting for " << num_running.load() << " aios and/or "
-	     << num_reading.load() << " readers to complete" << dendl;
+	     << num_reading.load() << " readers and/or "
+	     << (int)unwoken << " completion thread wakers to complete" << dendl;
     cond.wait(l);
   }
-  --num_waiting;
   dout(20) << __func__ << " " << this << " done" << dendl;
 }
 
