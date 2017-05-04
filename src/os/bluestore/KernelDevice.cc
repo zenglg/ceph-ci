@@ -365,6 +365,10 @@ void KernelDevice::_aio_thread()
 		 << " aios left" << dendl;
 	assert(r >= 0);
 
+	if (!ioc->priv) {
+	  ioc->pre_aio_wake();
+	}
+
 	int left = --ioc->num_running;
 	// NOTE: once num_running is decremented we can no longer
 	// trust aio[] values; they my be freed (e.g., by BlueFS::_fsync)
@@ -373,10 +377,13 @@ void KernelDevice::_aio_thread()
 	  // destroy this ioc).  and avoid ref to ioc after aio_wake()
 	  // in case that triggers destruction.
 	  void *priv = ioc->priv;
-	  ioc->aio_wake();
 	  if (priv) {
 	    aio_callback(aio_callback_priv, priv);
+	  } else {
+	    ioc->aio_wake();
 	  }
+	} else if (!ioc->priv) {
+	  ioc->cancel_aio_wake();
 	}
       }
     }
