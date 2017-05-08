@@ -8265,7 +8265,8 @@ void BlueStore::_deferred_submit(OpSequencer *osr)
       bl.clear();
     }
     dout(20) << __func__ << "   seq " << i->second.seq << " 0x"
-	     << std::hex << pos << "~" << i->second.bl.length() << std::dec
+	     << std::hex << pos << "~" << i->second.bl.length()
+	     << " crc " << i->second.bl.crc32c(-1) << std::dec
 	     << dendl;
     if (!bl.length()) {
       start = pos;
