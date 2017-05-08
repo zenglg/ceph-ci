@@ -1625,7 +1625,7 @@ int OSDMap::apply_incremental(const Incremental &inc)
     full_ratio = inc.new_full_ratio;
   }
   if (inc.new_require_min_compat_client.length()) {
-    require_new_min_compat_client = new_require_min_compat_client;
+    require_min_compat_client = inc.new_require_min_compat_client;
   }
 
   // do new crush map last (after up/down stuff)
