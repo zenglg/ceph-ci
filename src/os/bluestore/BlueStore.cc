@@ -2908,6 +2908,9 @@ void BlueStore::DeferredBatch::prepare_write(
 	   << " 0x" << std::hex << offset << "~" << length
 	   << " crc " << i.first->second.bl.crc32c(-1)
 	   << std::dec << dendl;
+  dout(20) << __func__ << " bl:\n";
+  i.first->second.bl.hexdump(*_dout);
+  *_dout << dendl;
   seq_bytes[seq] += length;
 #ifdef DEBUG_DEFERRED
   _audit(cct);
@@ -8250,6 +8253,9 @@ void BlueStore::_deferred_submit(OpSequencer *osr)
 	dout(20) << __func__ << " write 0x" << std::hex
 		 << start << "~" << bl.length()
 		 << " crc " << bl.crc32c(-1) << std::dec << dendl;
+	dout(20) << __func__ << " bl:\n";
+	bl.hexdump(*_dout);
+	*_dout << dendl;
 	if (!g_conf->bluestore_debug_omit_block_device_write) {
 	  logger->inc(l_bluestore_deferred_write_ops);
 	  logger->inc(l_bluestore_deferred_write_bytes, bl.length());
