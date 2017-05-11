@@ -3855,6 +3855,8 @@ void Locker::handle_simple_lock(SimpleLock *lock, MLock *m)
     if (lock->is_leased())
       revoke_client_leases(lock);
     eval_gather(lock, true);
+    if (lock->is_unstable_and_locked())
+      mds->mdlog->flush();
     break;
 
 
@@ -5091,6 +5093,8 @@ void Locker::handle_file_lock(ScatterLock *lock, MLock *m)
     if (lock->get_state() == LOCK_MIX) {
       lock->set_state(LOCK_MIX_SYNC);
       eval_gather(lock, true);
+      if (lock->is_unstable_and_locked())
+	mds->mdlog->flush();
       break;
     }
 
@@ -5116,6 +5120,9 @@ void Locker::handle_file_lock(ScatterLock *lock, MLock *m)
     }
 
     eval_gather(lock, true);
+    if (lock->is_unstable_and_locked())
+      mds->mdlog->flush();
+
     break;
 
   case LOCK_AC_LOCKFLUSHED:
@@ -5135,6 +5142,8 @@ void Locker::handle_file_lock(ScatterLock *lock, MLock *m)
       // MIXED
       lock->set_state(LOCK_SYNC_MIX);
       eval_gather(lock, true);
+      if (lock->is_unstable_and_locked())
+	mds->mdlog->flush();
       break;
     } 
     
