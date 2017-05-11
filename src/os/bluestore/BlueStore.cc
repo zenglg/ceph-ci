@@ -547,7 +547,7 @@ void BlueStore::GarbageCollector::process_protrusive_extents(
   uint64_t lookup_start_offset = P2ALIGN(start_offset, min_alloc_size);
   uint64_t lookup_end_offset = ROUND_UP_TO(end_offset, min_alloc_size);
 
-  dout(30) << __func__ << " (hex): [" << std::hex
+  dout(0) << __func__ << " (hex): [" << std::hex
            << lookup_start_offset << ", " << lookup_end_offset 
            << ")" << std::dec << dendl;
 
