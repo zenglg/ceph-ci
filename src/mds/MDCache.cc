@@ -10786,7 +10786,6 @@ void MDCache::adjust_dir_fragments(CInode *diri,
     // merge
     CDir *f = new CDir(diri, basefrag, this, srcfrags.front()->is_auth());
     f->merge(srcfrags, waiters, replay);
-    diri->add_dirfrag(f);
 
     if (any_subtree) {
       assert(f->is_subtree_root());
