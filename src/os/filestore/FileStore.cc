@@ -3158,8 +3158,7 @@ int FileStore::read(
   uint64_t offset,
   size_t len,
   bufferlist& bl,
-  uint32_t op_flags,
-  bool allow_eio)
+  uint32_t op_flags)
 {
   int got;
   tracepoint(objectstore, read_enter, _cid.c_str(), offset, len);
@@ -3195,10 +3194,6 @@ int FileStore::read(
   if (got < 0) {
     dout(10) << "FileStore::read(" << cid << "/" << oid << ") pread error: " << cpp_strerror(got) << dendl;
     lfn_close(fd);
-    if (!(allow_eio || !m_filestore_fail_eio || got != -EIO)) {
-      derr << "FileStore::read(" << cid << "/" << oid << ") pread error: " << cpp_strerror(got) << dendl;
-      assert(0 == "eio on pread");
-    }
     return got;
   }
   bptr.set_length(got);   // properly size the buffer
