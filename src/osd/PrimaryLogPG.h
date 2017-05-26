@@ -1623,17 +1623,31 @@ private:
     struct ReservationCB : public Context {
       PrimaryLogPGRef pg;
       bool canceled;
-      ReservationCB(PrimaryLogPG *pg) : pg(pg), canceled(false) {}
+      Mutex lock;
+      ReservationCB(PrimaryLogPG *pg) : pg(pg), canceled(false),
+					lock("ReservationCB", false, false) {}
       void finish(int) override {
-	pg->lock();
-	if (!canceled)
-	  pg->snap_trimmer_machine.process_event(SnapTrimReserved());
-	pg->unlock();
+	PrimaryLogPGRef pgp;
+	{
+	  Mutex::Locker l(lock);
+	  if (canceled)
+	    return;
+	  pgp = pg;
+	}
+	pgp->lock();
+	{
+	  Mutex::Locker l(lock);
+	  if (!canceled)
+	    pgp->snap_trimmer_machine.process_event(SnapTrimReserved());
+	}
+	pgp->unlock();
       }
       void cancel() {
 	assert(pg->is_locked());
+	Mutex::Locker l(lock);
 	assert(!canceled);
 	canceled = true;
+	pg.reset();
       }
     };
     ReservationCB *pending = nullptr;
