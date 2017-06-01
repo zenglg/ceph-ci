@@ -951,6 +951,10 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 /* Check that all targets are in the MDSMap export_targets for my rank. */
 bool MDBalancer::check_targets(const balance_state_t& state)
 {
+  // according to current balance state to update this MDSRank export_targets,
+  // then next MDSRank's tick could update MDSMap export_targets
+  hit_targets(state);
+
   for (const auto &it : state.targets) {
     if (!mds->is_export_target(it.first)) {
       return false;
