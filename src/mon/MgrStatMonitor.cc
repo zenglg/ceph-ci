@@ -83,7 +83,10 @@ void MgrStatMonitor::update_from_paxos(bool *need_bootstrap)
   if (version) {
     assert(bl.length());
     auto p = bl.begin();
-    ::decode(digest, p);
+    bufferlist digestbl;
+    ::decode(digestbl, p);
+    auto q = digestbl.begin();
+    ::decode(digest, q);
     ::decode(health_summary, p);
     ::decode(health_detail, p);
   }
@@ -101,8 +104,9 @@ void MgrStatMonitor::encode_pending(MonitorDBStore::TransactionRef t)
 {
   ++version;
   dout(10) << " " << version << dendl;
-  bufferlist bl;
-  ::encode(pending_digest, bl, mon->get_quorum_con_features());
+  bufferlist digestbl, bl;
+  ::encode(pending_digest, digestbl, mon->get_quorum_con_features());
+  ::encode(digestbl, bl);
   ::encode(pending_health_summary, bl);
   ::encode(pending_health_detail, bl);
   put_version(t, version, bl);
