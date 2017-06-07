@@ -419,11 +419,8 @@ int parse_credentials(const req_info& info,                     /* in */
                       boost::string_view& signedheaders,        /* out */
                       boost::string_view& signature,            /* out */
                       boost::string_view& date,                 /* out */
-                      bool& using_qs)                           /* out */
+                      const bool using_qs)                      /* out */
 {
-  const char* const http_auth = info.env->get("HTTP_AUTHORIZATION");
-  using_qs = http_auth == nullptr || http_auth[0] == '\0';
-
   int ret;
   boost::string_view credential;
   if (using_qs) {

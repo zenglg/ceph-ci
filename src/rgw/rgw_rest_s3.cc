@@ -3508,8 +3508,7 @@ std::tuple<AWSVerAbstractor::access_key_id_t,
            AWSVerAbstractor::signature_factory_t,
            AWSVerAbstractor::completer_factory_t>
 AWSGeneralAbstractor::get_auth_data_v4(const req_state* const s,
-                                       /* FIXME: const. */
-                                       bool using_qs) const
+                                       const bool using_qs) const
 {
   boost::string_view access_key_id;
   boost::string_view signed_hdrs;
