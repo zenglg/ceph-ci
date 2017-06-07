@@ -3154,17 +3154,6 @@ int RGW_Auth_S3::authorize(RGWRados* const store,
     return 0;
   }
 
-  return authorize_v2(store, auth_registry, s);
-}
-
-
-/*
- * handle v2 signatures
- */
-int RGW_Auth_S3::authorize_v2(RGWRados* const store,
-                              const rgw::auth::StrategyRegistry& auth_registry,
-                              struct req_state* const s)
-{
   const auto ret = rgw::auth::Strategy::apply(auth_registry.get_s3_main(), s);
   if (ret == 0) {
     /* Populate the owner info. */

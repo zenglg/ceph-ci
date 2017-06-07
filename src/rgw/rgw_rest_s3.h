@@ -442,10 +442,6 @@ public:
 };
 
 class RGW_Auth_S3 {
-private:
-  static int authorize_v2(RGWRados *store,
-                          const rgw::auth::StrategyRegistry& auth_registry,
-                          struct req_state *s);
 public:
   static int authorize(RGWRados *store,
                        const rgw::auth::StrategyRegistry& auth_registry,
