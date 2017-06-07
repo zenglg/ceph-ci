@@ -95,6 +95,16 @@ void ClusterState::update_delta_stats()
   pending_inc.stamp = ceph_clock_now();
   pending_inc.version = pg_map.version + 1; // to make apply_incremental happy
   dout(10) << " v" << pending_inc.version << dendl;
+  dout(10) << " pg_map before:\n";
+  JSONFormatter jf(true);
+  pg_map.dump(&jf);
+  jf.flush(*_dout);
+  *_dout << dendl;
+  dout(10) << " incremental:\n";
+  JSONFormatter jf(true);
+  pending_inc.dump(&jf);
+  jf.flush(*_dout);
+  *_dout << dendl;
   pg_map.apply_incremental(g_ceph_context, pending_inc);
   pending_inc = PGMap::Incremental();
 }
