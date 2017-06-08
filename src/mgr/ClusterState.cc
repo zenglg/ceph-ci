@@ -97,12 +97,12 @@ void ClusterState::update_delta_stats()
   dout(10) << " v" << pending_inc.version << dendl;
   dout(10) << " pg_map before:\n";
   JSONFormatter jf(true);
-  pg_map.dump(&jf);
+  jf.dump_object("pg_map", pg_map);
   jf.flush(*_dout);
   *_dout << dendl;
   dout(10) << " incremental:\n";
   JSONFormatter jf(true);
-  pending_inc.dump(&jf);
+  jf.dump_object("pending_inc", pending_inc);
   jf.flush(*_dout);
   *_dout << dendl;
   pg_map.apply_incremental(g_ceph_context, pending_inc);
@@ -132,6 +132,16 @@ void ClusterState::notify_osdmap(const OSDMap &osd_map)
   PGMapUpdater::check_down_pgs(osd_map, pg_map, true,
 			       need_check_down_pg_osds, &pending_inc);
 
+  dout(10) << " pg_map before:\n";
+  JSONFormatter jf(true);
+  jf.dump_object("pg_map", pg_map);
+  jf.flush(*_dout);
+  *_dout << dendl;
+  dout(10) << " incremental:\n";
+  JSONFormatter jf(true);
+  jf.dump_object("pending_inc", pending_inc);
+  jf.flush(*_dout);
+  *_dout << dendl;
   pg_map.apply_incremental(g_ceph_context, pending_inc);
   pending_inc = PGMap::Incremental();
   // TODO: Complete the separation of PG state handling so
