@@ -2552,6 +2552,57 @@ class CryptHelpers(object):
             return None
 
 
+class Secrets(object):
+
+    def __init__(self):
+        secret, stderr, ret = command(['ceph-authtool', '--gen-print-key'])
+        LOG.debug("stderr " + stderr)
+        assert ret == 0
+        self.keys = {
+            'cephx_secret': secret.strip(),
+        }
+
+    def write_osd_keyring(self, path, osd_id):
+        command_check_call(
+            [
+                'ceph-authtool', os.path.join(path, 'keyring'),
+                '--create-keyring',
+                '--name', 'osd.' + str(osd_id),
+                '--add-key', self.keys['cephx_secret'],
+            ])
+
+    def get_json(self):
+        return json.dumps(self.keys)
+
+
+class LockboxSecrets(Secrets):
+
+    def __init__(self, args):
+        super(LockboxSecrets, self).__init__()
+
+        key_size = CryptHelpers.get_dmcrypt_keysize(args)
+        key = open('/dev/urandom', 'rb').read(key_size / 8)
+        base64_key = base64.b64encode(key).decode('ascii')
+
+        secret, stderr, ret = command(['ceph-authtool', '--gen-print-key'])
+        LOG.debug("stderr " + stderr)
+        assert ret == 0
+
+        self.keys.update({
+            'dmcrypt_key': base64.b64encode(key),
+            'cephx_lockbox_secret': secret.strip(),
+        })
+
+    def write_lockbox_keyring(self, path, osd_uuid):
+        command_check_call(
+            [
+                'ceph-authtool', os.path.join(path, 'keyring'),
+                '--create-keyring',
+                '--name', 'client.osd-lockbox.' + osd_uuid,
+                '--add-key', self.keys['cephx_lockbox_secret'],
+            ])
+
+
 class Lockbox(object):
 
     def __init__(self, args):
