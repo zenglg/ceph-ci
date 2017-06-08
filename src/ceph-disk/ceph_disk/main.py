@@ -478,6 +478,20 @@ def command(arguments, **kwargs):
     return _bytes2str(out), _bytes2str(err), process.returncode
 
 
+def command_with_stdin(arguments, stdin):
+    LOG.info("Running command with stdin: " + " ".join(arguments))
+    process = subprocess.Popen(
+        arguments,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    out, err = process.communicate(bytearray(stdin, 'ascii'))
+    LOG.debug(out)
+    LOG.error(err)
+    assert process.returncode == 0
+    return out
+
+
 def _bytes2str(string):
     return string.decode('utf-8') if isinstance(string, bytes) else string
 
