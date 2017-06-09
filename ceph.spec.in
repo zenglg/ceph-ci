@@ -1056,9 +1056,9 @@ fi
 %defattr(-,root,root,-)
 %dir %{_docdir}
 %dir %{_docdir}/ceph
-%{_docdir}/ceph/sample.ceph.conf
-%{_docdir}/ceph/sample.fetch_config
-%{_docdir}/ceph/COPYING
+%doc %{_docdir}/ceph/sample.ceph.conf
+%doc %{_docdir}/ceph/sample.fetch_config
+%doc %{_docdir}/ceph/COPYING
 %{_bindir}/ceph
 %{_bindir}/ceph-authtool
 %{_bindir}/ceph-conf
