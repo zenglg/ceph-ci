@@ -909,6 +909,7 @@ mkdir -p %{buildroot}%{_sbindir}
 install -m 0644 -D src/logrotate.conf %{buildroot}%{_sysconfdir}/logrotate.d/ceph
 chmod 0644 %{buildroot}%{_docdir}/ceph/sample.ceph.conf
 chmod 0644 %{buildroot}%{_docdir}/ceph/sample.fetch_config
+install -m 0644 -D COPYING %{buildroot}%{_docdir}/ceph/COPYING
 
 # firewall templates and /sbin/mount.ceph symlink
 %if 0%{?suse_version}
@@ -953,10 +954,6 @@ rm -rf %{buildroot}
 
 %files base
 %defattr(-,root,root,-)
-%docdir %{_docdir}
-%dir %{_docdir}/ceph
-%{_docdir}/ceph/sample.ceph.conf
-%{_docdir}/ceph/sample.fetch_config
 %{_bindir}/crushtool
 %{_bindir}/monmaptool
 %{_bindir}/osdmaptool
@@ -1057,6 +1054,11 @@ fi
 
 %files common
 %defattr(-,root,root,-)
+%dir %{_docdir}
+%dir %{_docdir}/ceph
+%{_docdir}/ceph/sample.ceph.conf
+%{_docdir}/ceph/sample.fetch_config
+%{_docdir}/ceph/COPYING
 %{_bindir}/ceph
 %{_bindir}/ceph-authtool
 %{_bindir}/ceph-conf

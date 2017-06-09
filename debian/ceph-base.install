@@ -11,6 +11,7 @@ usr/lib/ceph/erasure-code/*
 usr/lib/rados-classes/*
 usr/share/doc/ceph/sample.ceph.conf
 usr/share/doc/ceph/sample.fetch_config
+usr/share/doc/ceph/COPYING
 usr/share/man/man8/ceph-debugpack.8
 usr/share/man/man8/ceph-deploy.8
 usr/share/man/man8/ceph-run.8
