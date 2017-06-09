@@ -10401,6 +10401,7 @@ void PrimaryLogPG::mark_all_unfound_lost(
   ceph_tid_t tid)
 {
   dout(3) << __func__ << " " << pg_log_entry_t::get_op_name(what) << dendl;
+  list<hobject_t> oids;
 
   dout(30) << __func__ << ": log before:\n";
   pg_log.get_log().print(*_dout);
@@ -10465,7 +10466,7 @@ void PrimaryLogPG::mark_all_unfound_lost(
 	} // otherwise, just do what we used to do
 	dout(10) << e << dendl;
 	log_entries.push_back(e);
-	missing_loc.recovered(oid);
+        oids.push_back(oid);
 
 	++v.version;
 	++m;
@@ -10483,7 +10484,9 @@ void PrimaryLogPG::mark_all_unfound_lost(
     log_entries,
     std::move(manager),
     boost::optional<std::function<void(void)> >(
-      [=]() {
+      [this, oids, con, num_unfound, tid]() {
+	  for (auto oid: oids)
+	    missing_loc.recovered(oid);
 	requeue_ops(waiting_for_all_missing);
 	waiting_for_all_missing.clear();
 	for (auto& p : waiting_for_unreadable_object) {
