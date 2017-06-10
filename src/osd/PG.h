@@ -256,6 +256,8 @@ protected:
   CephContext *cct;
   OSDriver osdriver;
   SnapMapper snap_mapper;
+  bool eio_errors_to_process = false;
+  bool goingclean = false;
 
   virtual PGBackend *get_pgbackend() = 0;
 public:
@@ -1857,6 +1859,7 @@ public:
     struct Recovered : boost::statechart::state< Recovered, Active >, NamedState {
       typedef boost::mpl::list<
 	boost::statechart::transition< GoClean, Clean >,
+	boost::statechart::transition< DoRecovery, WaitLocalRecoveryReserved >,
 	boost::statechart::custom_reaction< AllReplicasActivated >
       > reactions;
       explicit Recovered(my_context ctx);

@@ -10677,6 +10677,7 @@ void PrimaryLogPG::on_activate()
 	  RequestBackfill())));
   } else {
     dout(10) << "activate all replicas clean, no recovery" << dendl;
+    eio_errors_to_process = false;
     queue_peering_event(
       CephPeeringEvtRef(
 	std::make_shared<CephPeeringEvt>(
@@ -11099,6 +11100,7 @@ bool PrimaryLogPG::start_recovery_ops(
             RequestBackfill())));
     } else {
       dout(10) << "recovery done, no backfill" << dendl;
+      eio_errors_to_process = false;
       queue_peering_event(
         CephPeeringEvtRef(
           std::make_shared<CephPeeringEvt>(
@@ -11109,6 +11111,7 @@ bool PrimaryLogPG::start_recovery_ops(
   } else { // backfilling
     state_clear(PG_STATE_BACKFILL);
     dout(10) << "recovery done, backfill done" << dendl;
+    eio_errors_to_process = false;
     queue_peering_event(
       CephPeeringEvtRef(
         std::make_shared<CephPeeringEvt>(
@@ -13909,20 +13912,21 @@ int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef 
   waiting_for_unreadable_object[soid].push_back(op);
   op->mark_delayed("waiting for missing object");
 
-  if (is_clean()) {
-    // XXX: Using clean state to check that we haven't already triggered this recovery
-    state_clear(PG_STATE_CLEAN);
-    queue_peering_event(
-      CephPeeringEvtRef(
-	std::make_shared<CephPeeringEvt>(
+  if (!eio_errors_to_process) {
+    eio_errors_to_process = true;
+    if (is_clean() || goingclean) {
+      queue_peering_event(
+        CephPeeringEvtRef(
+	  std::make_shared<CephPeeringEvt>(
 	  get_osdmap()->get_epoch(),
 	  get_osdmap()->get_epoch(),
 	  DoRecovery())));
+    }
   } else {
     // A prior error must have already cleared clean state and queued recovery
     // or a map change has triggered re-peering.
     // Not inlining the recovery by calling maybe_kick_recovery(soid);
-    dout(5) << __func__<< ": Read error but pg isn't clean" << dendl;
+    dout(5) << __func__<< ": Read error on " << soid << ", but already seen errors" << dendl;
   }
 
   return -EAGAIN;

@@ -6835,6 +6835,12 @@ PG::RecoveryState::Recovered::Recovered(my_context ctx)
   PG *pg = context< RecoveryMachine >().pg;
   pg->osd->local_reserver.cancel_reservation(pg->info.pgid);
 
+  if (pg->eio_errors_to_process && pg->needs_recovery()) {
+    post_event(DoRecovery());
+    return;
+  }
+
+  pg->goingclean = true;
   assert(!pg->needs_recovery());
 
   // if we finished backfill, all acting are active; recheck if
@@ -6880,6 +6886,7 @@ PG::RecoveryState::Clean::Clean(my_context ctx)
   }
   pg->finish_recovery(*context< RecoveryMachine >().get_on_safe_context_list());
   pg->mark_clean();
+  pg->goingclean = false;
 
   pg->share_pg_info();
   pg->publish_stats_to_osd();
