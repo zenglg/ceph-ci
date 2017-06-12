@@ -70,7 +70,11 @@ void PGBackend::send_recovery_deletes(int prio,
     while (it != objects.end()) {
       uint64_t cost = 0;
       uint64_t deletes = 0;
-      MOSDPGRecoveryDelete *msg = new MOSDPGRecoveryDelete(get_parent()->primary_spg_t(), get_osdmap()->get_epoch());
+      spg_t target_pg = spg_t(get_parent()->get_info().pgid.pgid, shard.shard);
+      MOSDPGRecoveryDelete *msg =
+	new MOSDPGRecoveryDelete(get_parent()->whoami_shard(),
+				 target_pg,
+				 get_osdmap()->get_epoch());
       msg->set_priority(prio);
 
       while (it != objects.end() &&
@@ -124,7 +128,7 @@ void PGBackend::handle_recovery_delete(OpRequestRef op)
   MOSDPGRecoveryDeleteReply *reply = new MOSDPGRecoveryDeleteReply;
   reply->from = get_parent()->whoami_shard();
   reply->set_priority(m->get_priority());
-  reply->pgid = get_info().pgid;
+  reply->pgid = spg_t(get_parent()->get_info().pgid.pgid, m->from.shard);
   reply->map_epoch = m->map_epoch;
   reply->objects = m->objects;
   ConnectionRef conn = m->get_connection();

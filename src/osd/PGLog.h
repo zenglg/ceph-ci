@@ -1236,7 +1236,9 @@ public:
 	    if (debug_verify_stored_missing) {
 	      auto miter = missing.get_items().find(i->soid);
 	      if (i->is_delete()) {
-		assert(miter == missing.get_items().end());
+		assert(miter == missing.get_items().end() ||
+		       (miter->second.need == i->version &&
+			miter->second.have == eversion_t()));
 	      } else {
 		assert(miter != missing.get_items().end());
 		assert(miter->second.need == i->version);

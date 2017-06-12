@@ -15,6 +15,7 @@ struct MOSDPGRecoveryDelete : public MOSDFastDispatchOp {
   static const int HEAD_VERSION = 1;
   static const int COMPAT_VERSION = 1;
 
+  pg_shard_t from;
   spg_t pgid;            ///< target spg_t
   epoch_t map_epoch;
   list<pair<hobject_t, eversion_t> > objects;    ///< objects to remove
@@ -42,9 +43,10 @@ public:
     : MOSDFastDispatchOp(MSG_OSD_PG_RECOVERY_DELETE, HEAD_VERSION,
 			COMPAT_VERSION) {}
 
-  MOSDPGRecoveryDelete(spg_t pgid, epoch_t map_epoch)
+  MOSDPGRecoveryDelete(pg_shard_t from, spg_t pgid, epoch_t map_epoch)
     : MOSDFastDispatchOp(MSG_OSD_PG_RECOVERY_DELETE, HEAD_VERSION,
 			 COMPAT_VERSION),
+      from(from),
       pgid(pgid),
       map_epoch(map_epoch) {}
 
@@ -58,6 +60,7 @@ public:
   }
 
   void encode_payload(uint64_t features) {
+    ::encode(from, payload);
     ::encode(pgid, payload);
     ::encode(map_epoch, payload);
     ::encode(cost, payload);
@@ -65,6 +68,7 @@ public:
   }
   void decode_payload() {
     bufferlist::iterator p = payload.begin();
+    ::decode(from, p);
     ::decode(pgid, p);
     ::decode(map_epoch, p);
     ::decode(cost, p);
