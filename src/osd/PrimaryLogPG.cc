@@ -10061,24 +10061,27 @@ int PrimaryLogPG::recover_missing(
     start_recovery_op(soid);
     assert(!recovering.count(soid));
     recovering.insert(make_pair(soid, ObjectContextRef()));
+    epoch_t cur_epoch = get_osdmap()->get_epoch();
     remove_missing_object(soid, v, new FunctionContext(
      [=](int) {
        lock();
-       bool object_missing = false;
-       for (const auto& p : peer_missing) {
-	 if (p.second.is_missing(soid)) {
-	   object_missing = true;
-	   break;
+       if (!pg_has_reset_since(cur_epoch)) {
+	 bool object_missing = false;
+	 for (const auto& p : peer_missing) {
+	   if (p.second.is_missing(soid)) {
+	     object_missing = true;
+	     break;
+	   }
 	 }
-       }
-       if (!object_missing) {
-	 object_stat_sum_t stat_diff;
-	 stat_diff.num_objects_recovered = 1;
-	 on_global_recover(soid, stat_diff, true);
-       } else {
-	 auto recovery_handle = pgbackend->open_recovery_op();
-	 pgbackend->recover_delete_object(soid, v, recovery_handle);
-	 pgbackend->run_recovery_op(recovery_handle, priority);
+	 if (!object_missing) {
+	   object_stat_sum_t stat_diff;
+	   stat_diff.num_objects_recovered = 1;
+	   on_global_recover(soid, stat_diff, true);
+	 } else {
+	   auto recovery_handle = pgbackend->open_recovery_op();
+	   pgbackend->recover_delete_object(soid, v, recovery_handle);
+	   pgbackend->run_recovery_op(recovery_handle, priority);
+	 }
        }
        unlock();
      }));
@@ -10175,14 +10178,17 @@ void PrimaryLogPG::remove_missing_object(const hobject_t &soid,
   recovery_info.soid = soid;
   recovery_info.version = v;
 
+  epoch_t cur_epoch = get_osdmap()->get_epoch();
   t.register_on_complete(new FunctionContext(
      [=](int) {
        lock();
-       ObjectStore::Transaction t2;
-       on_local_recover(soid, recovery_info, ObjectContextRef(), true, &t2);
-       t2.register_on_complete(on_complete);
-       int r = osd->store->queue_transaction(osr.get(), std::move(t2), nullptr);
-       assert(r == 0);
+       if (!pg_has_reset_since(cur_epoch)) {
+	 ObjectStore::Transaction t2;
+	 on_local_recover(soid, recovery_info, ObjectContextRef(), true, &t2);
+	 t2.register_on_complete(on_complete);
+	 int r = osd->store->queue_transaction(osr.get(), std::move(t2), nullptr);
+	 assert(r == 0);
+       }
        unlock();
      }));
   int r = osd->store->queue_transaction(osr.get(), std::move(t), nullptr);
