@@ -3226,7 +3226,7 @@ int FileStore::read(
     return -EIO;
   } else if (cct->_conf->filestore_debug_random_read_err &&
     (rand() % (int)(cct->_conf->filestore_debug_random_read_err * 100.0)) == 0) {
-    dout(0) << __func__ << ": filestore inject random EIO" << dendl;
+    dout(0) << __func__ << ": inject random EIO" << dendl;
     return -EIO;
   } else {
     tracepoint(objectstore, read_exit, got);
