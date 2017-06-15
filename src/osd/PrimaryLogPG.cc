@@ -630,6 +630,16 @@ void PrimaryLogPG::block_write_on_full_cache(
   op->mark_delayed("waiting for cache not full");
 }
 
+void PrimaryLogPG::block_for_clean(
+  const hobject_t& oid, OpRequestRef op)
+{
+  dout(20) << __func__ << ": blocking object " << oid
+	   << " on primary repair" << dendl;
+  //objects_blocked_on_primary_repair.insert(oid);
+  waiting_for_clean_to_primary_repair.push_back(op);
+  op->mark_delayed("waiting for clean to repair");
+}
+
 void PrimaryLogPG::block_write_on_snap_rollback(
   const hobject_t& oid, ObjectContextRef obc, OpRequestRef op)
 {
@@ -13867,14 +13877,21 @@ int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef 
   dout(10) << __func__ << " " << soid
 	   << " peers osd.{" << actingbackfill << "}" << dendl;
 
+  if (!is_clean()) { //&& objects_blocked_on_primary_repair.find(soid)) {
+    block_for_clean(soid, op);
+    return -EAGAIN;
+  }
+
   assert(!pg_log.get_missing().is_missing(soid));
   bufferlist bv;
-  int r = get_pgbackend()->objects_get_attr(soid, OI_ATTR, &bv);
-  if (r < 0)
-    return r;
   object_info_t oi;
   eversion_t v;
-  try {
+  int r = get_pgbackend()->objects_get_attr(soid, OI_ATTR, &bv);
+  if (r < 0) {
+    // Leave v and try to repair without a version, getting attr failed
+    dout(0) << __func__ << ": Need version of replica, objects_get_attr failed: "
+	    << soid << " error=" << r << dendl;
+  } else try {
     bufferlist::iterator bliter = bv.begin();
     ::decode(oi, bliter);
     v = oi.version;
@@ -13883,18 +13900,6 @@ int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef 
     // not much worse than failing here.
     dout(0) << __func__ << ": Need version of replica, bad object_info_t: " << soid << dendl;
   }
-
-  // Wait for transition to clean before proceeding
-  int loops = 1;
-  while (goingclean) {
-    dout(0) << __func__ << " waiting for clean " << soid << " loop " << loops << dendl;
-    ++loops;
-    utime_t t;
-    t.set_from_double(1.0);
-    t.sleep();
-  }
-  // if were goingclean then we are clean now
-  assert(loops == 1 || is_clean());
 
   missing_loc.add_missing(soid, v, eversion_t());
   if (primary_error(soid, v)) {
@@ -13907,19 +13912,19 @@ int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef 
     // Drop through to save this op in case an osd comes up with the object.
   }
 
+  // Restart the op after object becaomes readable again
   waiting_for_unreadable_object[soid].push_back(op);
   op->mark_delayed("waiting for missing object");
 
   if (!eio_errors_to_process) {
     eio_errors_to_process = true;
-    if (is_clean()) {
-      queue_peering_event(
+    assert(is_clean());
+    queue_peering_event(
         CephPeeringEvtRef(
 	  std::make_shared<CephPeeringEvt>(
 	  get_osdmap()->get_epoch(),
 	  get_osdmap()->get_epoch(),
 	  DoRecovery())));
-    }
   } else {
     // A prior error must have already cleared clean state and queued recovery
     // or a map change has triggered re-peering.

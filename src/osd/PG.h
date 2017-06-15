@@ -257,7 +257,6 @@ protected:
   OSDriver osdriver;
   SnapMapper snap_mapper;
   bool eio_errors_to_process = false;
-  bool goingclean = false;
 
   virtual PGBackend *get_pgbackend() = 0;
 public:
@@ -906,6 +905,7 @@ protected:
   list<OpRequestRef>            waiting_for_scrub;
 
   list<OpRequestRef>            waiting_for_cache_not_full;
+  list<OpRequestRef>            waiting_for_clean_to_primary_repair;
   map<hobject_t, list<OpRequestRef>> waiting_for_unreadable_object,
 			     waiting_for_degraded_object,
 			     waiting_for_blocked_object;
@@ -913,6 +913,7 @@ protected:
   set<hobject_t> objects_blocked_on_cache_full;
   map<hobject_t,snapid_t> objects_blocked_on_degraded_snap;
   map<hobject_t,ObjectContextRef> objects_blocked_on_snap_promotion;
+  //set<hobject_t> objects_blocked_on_primary_repair;
 
   // Callbacks should assume pg (and nothing else) is locked
   map<hobject_t, list<Context*>> callbacks_for_degraded_object;
