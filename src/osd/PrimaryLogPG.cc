@@ -13898,6 +13898,18 @@ int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef 
     dout(0) << __func__ << ": Need version of replica, bad object_info_t: " << soid << dendl;
   }
 
+  // Wait for transition to clean before proceeding
+  int loops = 1;
+  while (goingclean) {
+    dout(0) << __func__ << " waiting for clean " << soid << " loop " << loops << dendl;
+    ++loops;
+    utime_t t;
+    t.set_from_double(1.0);
+    t.sleep();
+  }
+  // if were goingclean then we are clean now
+  assert(loops == 1 || is_clean());
+
   missing_loc.add_missing(soid, v, eversion_t());
   if (primary_error(soid, v)) {
     dout(0) << __func__ << " No other replicas available for " << soid << dendl;
@@ -13914,7 +13926,7 @@ int PrimaryLogPG::rep_repair_primary_object(const hobject_t& soid, OpRequestRef 
 
   if (!eio_errors_to_process) {
     eio_errors_to_process = true;
-    if (is_clean() || goingclean) {
+    if (is_clean()) {
       queue_peering_event(
         CephPeeringEvtRef(
 	  std::make_shared<CephPeeringEvt>(
