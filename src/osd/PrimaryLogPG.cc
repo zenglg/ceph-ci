@@ -10067,8 +10067,11 @@ int PrimaryLogPG::recover_missing(
        lock();
        if (!pg_has_reset_since(cur_epoch)) {
 	 bool object_missing = false;
-	 for (const auto& p : peer_missing) {
-	   if (p.second.is_missing(soid)) {
+	 for (const auto& shard : actingbackfill) {
+	   if (shard == pg_whoami)
+	     continue;
+	   if (peer_missing[shard].is_missing(soid)) {
+	     dout(20) << __func__ << ": soid " << soid << " needs to be deleted from replica " << shard << dendl;
 	     object_missing = true;
 	     break;
 	   }
