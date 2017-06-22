@@ -2,7 +2,7 @@
 Description=Ceph object storage daemon osd.%i
 After=network-online.target local-fs.target time-sync.target ceph-mon.target
 Wants=network-online.target local-fs.target time-sync.target
-PartOf=ceph-osd.target
+PartOf=ceph-osd.target ceph.target
 
 [Service]
 LimitNOFILE=1048576
@@ -22,4 +22,4 @@ StartLimitBurst=30
 RestartSec=20s
 
 [Install]
-WantedBy=ceph-osd.target
+WantedBy=ceph-osd.target ceph.target

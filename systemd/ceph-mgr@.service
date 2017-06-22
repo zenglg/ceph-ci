@@ -2,7 +2,7 @@
 Description=Ceph cluster manager daemon
 After=network-online.target local-fs.target time-sync.target ceph-mon@%i.service
 Wants=network-online.target local-fs.target time-sync.target
-PartOf=ceph-mgr.target ceph-mon@%i.service
+PartOf=ceph-mgr.target ceph-mon@%i.service ceph.target
 
 [Service]
 LimitNOFILE=1048576
@@ -29,4 +29,4 @@ StartLimitInterval=30min
 StartLimitBurst=3
 
 [Install]
-WantedBy=ceph-mgr.target
+WantedBy=ceph-mgr.target ceph.target

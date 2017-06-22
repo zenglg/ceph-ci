@@ -2,7 +2,7 @@
 Description=Ceph metadata server daemon
 After=network-online.target local-fs.target time-sync.target
 Wants=network-online.target local-fs.target time-sync.target
-PartOf=ceph-mds.target
+PartOf=ceph-mds.target ceph.target
 
 [Service]
 LimitNOFILE=1048576
@@ -21,4 +21,4 @@ StartLimitInterval=30min
 StartLimitBurst=3
 
 [Install]
-WantedBy=ceph-mds.target
+WantedBy=ceph-mds.target ceph.target

@@ -3,7 +3,7 @@ Description=Ceph FUSE client
 After=network-online.target local-fs.target time-sync.target
 Wants=network-online.target local-fs.target time-sync.target
 Conflicts=umount.target
-PartOf=ceph-fuse.target
+PartOf=ceph-fuse.target ceph.target
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/ceph
@@ -15,4 +15,4 @@ StartLimitInterval=30min
 StartLimitBurst=3
 
 [Install]
-WantedBy=ceph-fuse.target
+WantedBy=ceph-fuse.target ceph.target

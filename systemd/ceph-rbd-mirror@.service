@@ -2,6 +2,7 @@
 Description=Ceph rbd mirror daemon
 After=network-online.target local-fs.target
 Wants=network-online.target local-fs.target
+PartOf=ceph.target
 
 [Service]
 LimitNOFILE=1048576
@@ -20,4 +21,4 @@ StartLimitBurst=3
 TasksMax=infinity
 
 [Install]
-WantedBy=ceph-rbd-mirror.target
+WantedBy=ceph-rbd-mirror.target ceph.target
