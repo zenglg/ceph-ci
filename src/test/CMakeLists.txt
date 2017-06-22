@@ -333,6 +333,11 @@ target_link_libraries(ceph_test_librgw_file_nfsns
   ${EXTRALIBS}
   )
 
+install(TARGETS
+  ceph_test_librgw_file_nfsns
+  ceph_test_librgw_file_gp
+  DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 # ceph_test_librgw_file_aw (nfs write transaction [atomic write] tests)
 add_executable(ceph_test_librgw_file_aw
   librgw_file_aw.cc
