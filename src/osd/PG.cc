@@ -2003,16 +2003,27 @@ struct C_PG_FinishRecovery : public Context {
 
 void PG::mark_clean()
 {
-  if (actingset.size() == get_osdmap()->get_pg_size(info.pgid.pgid)) {
+  // only mark CLEAN if we have the desired number of replicas AND we
+  // are not remapped.
+  if (actingset.size() == get_osdmap()->get_pg_size(info.pgid.pgid) &&
+      up == acting)
     state_set(PG_STATE_CLEAN);
-    info.history.last_epoch_clean = get_osdmap()->get_epoch();
-    info.history.last_interval_clean = info.history.same_interval_since;
-    past_intervals.clear();
-    dirty_big_info = true;
-    dirty_info = true;
+
+  // NOTE: this is actually a bit premature: we haven't purged the
+  // strays yet.
+  info.history.last_epoch_clean = get_osdmap()->get_epoch();
+  info.history.last_interval_clean = info.history.same_interval_since;
+
+  past_intervals.clear();
+  dirty_big_info = true;
+
+  if (is_active()) {
+    /* The check is needed because if we are below min_size we're not
+     * actually active */
+    kick_snap_trim();
   }
 
-  kick_snap_trim();
+  dirty_info = true;
 }
 
 unsigned PG::get_recovery_priority()
@@ -6831,10 +6842,7 @@ PG::RecoveryState::Clean::Clean(my_context ctx)
     ceph_abort();
   }
   pg->finish_recovery(*context< RecoveryMachine >().get_on_safe_context_list());
-
-  if (pg->is_active()) {
-    pg->mark_clean();
-  }
+  pg->mark_clean();
 
   pg->share_pg_info();
   pg->publish_stats_to_osd();
