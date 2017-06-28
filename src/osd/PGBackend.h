@@ -122,6 +122,7 @@ struct inconsistent_obj_wrapper;
        OpRequestRef op = OpRequestRef()
        ) = 0;
      virtual epoch_t get_epoch() const = 0;
+     virtual epoch_t get_last_peering_reset_epoch() const = 0;
 
      virtual const set<pg_shard_t> &get_actingbackfill_shards() const = 0;
      virtual const set<pg_shard_t> &get_acting_shards() const = 0;

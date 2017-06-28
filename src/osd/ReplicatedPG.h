@@ -342,6 +342,9 @@ public:
   epoch_t get_epoch() const {
     return get_osdmap()->get_epoch();
   }
+  epoch_t get_last_peering_reset_epoch() const {
+    return get_last_peering_reset();
+  }
   const set<pg_shard_t> &get_actingbackfill_shards() const {
     return actingbackfill;
   }
