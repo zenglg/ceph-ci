@@ -1773,11 +1773,17 @@ void PG::activate(ObjectStore::Transaction& t,
       if (m && pi.last_backfill != hobject_t()) {
         for (list<pg_log_entry_t>::iterator p = m->log.log.begin();
              p != m->log.log.end();
-             ++p)
-	  if (cmp(p->soid, pi.last_backfill, get_sort_bitwise()) <= 0)
-	    pm.add_next_event(*p);
+             ++p) {
+	  if (cmp(p->soid, pi.last_backfill, get_sort_bitwise()) <= 0) {
+	    if (perform_deletes_during_peering() && p->is_delete()) {
+	      pm.rm(p->soid, p->version);
+	    } else {
+	      pm.add_next_event(*p);
+	    }
+	  }
+	}
       }
-      
+
       if (m) {
 	dout(10) << "activate peer osd." << peer << " sending " << m->log << dendl;
 	//m->log.print(cout);
@@ -3190,6 +3196,7 @@ void PG::read_state(ObjectStore *store, bufferlist &bl)
 		    info_struct_v);
   assert(r >= 0);
 
+  pg_log.set_may_include_deletes(!perform_deletes_during_peering());
   ostringstream oss;
   pg_log.read_log(store,
 		  coll,
