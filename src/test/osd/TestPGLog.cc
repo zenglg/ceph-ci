@@ -30,7 +30,9 @@
 class PGLogTest : public ::testing::Test, protected PGLog {
 public:
   PGLogTest() : PGLog(g_ceph_context) {}
-  virtual void SetUp() { }
+  virtual void SetUp() {
+    missing.may_include_deletes = true;
+  }
 
   virtual void TearDown() {
     clear();
@@ -96,6 +98,7 @@ public:
 
     set<hobject_t, hobject_t::BitwiseComparator> toremove;
     list<pg_log_entry_t> torollback;
+    bool deletes_during_peering;
 
   private:
     IndexedLog fullauth;
@@ -103,7 +106,10 @@ public:
     pg_info_t authinfo;
     pg_info_t divinfo;
   public:
+    TestCase() : deletes_during_peering(false) {}
     void setup() {
+      init.may_include_deletes = !deletes_during_peering;
+      final.may_include_deletes = !deletes_during_peering;
       fullauth.log.insert(fullauth.log.end(), base.begin(), base.end());
       fullauth.log.insert(fullauth.log.end(), auth.begin(), auth.end());
       fulldiv.log.insert(fulldiv.log.end(), base.begin(), base.end());
@@ -257,7 +263,13 @@ public:
     for (list<pg_log_entry_t>::const_iterator i = tcase.auth.begin();
 	 i != tcase.auth.end();
 	 ++i) {
-      omissing.add_next_event(*i);
+      if (i->version > oinfo.last_update) {
+	if (i->is_delete() && tcase.deletes_during_peering) {
+	  omissing.rm(i->soid, i->version);
+	} else {
+	  omissing.add_next_event(*i);
+	}
+      }
     }
     verify_missing(tcase, omissing);
   }
@@ -874,6 +886,7 @@ TEST_F(PGLogTest, merge_log) {
     oinfo.stats.reported_epoch = 1;
     log.tail = olog.tail = eversion_t(1, 1);
     log.head = olog.head = eversion_t(2, 1);
+    missing.may_include_deletes = false;
 
     EXPECT_FALSE(missing.have_missing());
     EXPECT_EQ(0U, log.log.size());
@@ -952,6 +965,7 @@ TEST_F(PGLogTest, merge_log) {
     list<hobject_t> remove_snap;
     bool dirty_info = false;
     bool dirty_big_info = false;
+    missing.may_include_deletes = false;
 
     {
       pg_log_entry_t e;
@@ -1049,6 +1063,7 @@ TEST_F(PGLogTest, merge_log) {
     bool dirty_big_info = false;
 
     hobject_t divergent_object;
+    missing.may_include_deletes = true;
 
     {
       pg_log_entry_t e;
@@ -1139,6 +1154,127 @@ TEST_F(PGLogTest, merge_log) {
        tail > (1,1)  |  x5   |  (1,1)  < tail
             |        |       |         |
             |        |       |         |
+            | (1,2)  |  x3   |  (1,2)  < lower_bound
+            |        |       |         |
+            |        |       |         |
+       head > (1,3)  |  x9   |         |
+            | DELETE |       |         |
+            |        |       |         |
+            |        |  x9   |  (2,3)  |
+            |        |       |  MODIFY |
+            |        |       |         |
+            |        |  x7   |  (2,4)  < head
+            |        |       |  DELETE |
+            +--------+-------+---------+
+
+      The log entry (1,3) deletes the object x9 but the olog entry (2,3) modifies
+      it and is authoritative : the log entry (1,3) is divergent.
+
+  */
+  {
+    clear();
+
+    ObjectStore::Transaction t;
+    pg_log_t olog;
+    pg_info_t oinfo;
+    pg_shard_t fromosd;
+    pg_info_t info;
+    list<hobject_t> remove_snap;
+    bool dirty_info = false;
+    bool dirty_big_info = false;
+
+    hobject_t divergent_object;
+
+    {
+      pg_log_entry_t e;
+      e.mod_desc.mark_unrollbackable();
+
+      e.version = eversion_t(1, 1);
+      e.soid.set_hash(0x5);
+      log.tail = e.version;
+      log.log.push_back(e);
+      e.version = eversion_t(1, 2);
+      e.soid.set_hash(0x3);
+      log.log.push_back(e);
+      e.version = eversion_t(1,3);
+      e.soid.set_hash(0x9);
+      divergent_object = e.soid;
+      e.op = pg_log_entry_t::DELETE;
+      log.log.push_back(e);
+      log.head = e.version;
+      log.index();
+
+      info.last_update = log.head;
+
+      e.version = eversion_t(1, 1);
+      e.soid.set_hash(0x5);
+      olog.tail = e.version;
+      olog.log.push_back(e);
+      e.version = eversion_t(1, 2);
+      e.soid.set_hash(0x3);
+      olog.log.push_back(e);
+      e.version = eversion_t(2, 3);
+      e.soid.set_hash(0x9);
+      e.op = pg_log_entry_t::MODIFY;
+      olog.log.push_back(e);
+      e.version = eversion_t(2, 4);
+      e.soid.set_hash(0x7);
+      e.op = pg_log_entry_t::DELETE;
+      olog.log.push_back(e);
+      olog.head = e.version;
+    }
+
+    snapid_t purged_snap(1);
+    {
+      oinfo.last_update = olog.head;
+      oinfo.purged_snaps.insert(purged_snap);
+    }
+
+    EXPECT_FALSE(missing.have_missing());
+    EXPECT_EQ(1U, log.objects.count(divergent_object));
+    EXPECT_EQ(3U, log.log.size());
+    EXPECT_TRUE(remove_snap.empty());
+    EXPECT_EQ(log.head, info.last_update);
+    EXPECT_TRUE(info.purged_snaps.empty());
+    EXPECT_FALSE(is_dirty());
+    EXPECT_FALSE(dirty_info);
+    EXPECT_FALSE(dirty_big_info);
+
+    TestHandler h(remove_snap);
+    missing.may_include_deletes = false;
+    merge_log(t, oinfo, olog, fromosd, info, &h,
+              dirty_info, dirty_big_info);
+
+    /* When the divergent entry is a DELETE and the authoritative
+       entry is a MODIFY, the object will be added to missing : it is
+       a verifiable side effect proving the entry was identified
+       to be divergent.
+    */
+    EXPECT_TRUE(missing.is_missing(divergent_object));
+    EXPECT_EQ(1U, log.objects.count(divergent_object));
+    EXPECT_EQ(4U, log.log.size());
+    /* DELETE entries from olog that are appended to the hed of the
+       log, and the divergent version of the object is removed (added
+       to remove_snap). When peering handles deletes, it is the earlier
+       version that is in the removed list.
+     */
+    EXPECT_EQ(0x7U, remove_snap.front().get_hash());
+    EXPECT_EQ(log.head, info.last_update);
+    EXPECT_TRUE(info.purged_snaps.contains(purged_snap));
+    EXPECT_TRUE(is_dirty());
+    EXPECT_TRUE(dirty_info);
+    EXPECT_TRUE(dirty_big_info);
+  }
+
+  /*        +--------------------------+
+            |  log              olog   |
+            +--------+-------+---------+
+            |        |object |         |
+            |version | hash  | version |
+            |        |       |         |
+       tail > (1,1)  |  x5   |  (1,1)  < tail
+            |        |       |         |
+            |        |       |         |
             | (1,4)  |  x7   |  (1,4)  < head
             |        |       |         |
             |        |       |         |
@@ -1209,6 +1345,7 @@ TEST_F(PGLogTest, merge_log) {
     EXPECT_FALSE(dirty_big_info);
 
     TestHandler h(remove_snap);
+    missing.may_include_deletes = false;
     merge_log(t, oinfo, olog, fromosd, info, &h,
               dirty_info, dirty_big_info);
 
@@ -1330,6 +1467,7 @@ TEST_F(PGLogTest, proc_replica_log) {
     EXPECT_EQ(last_update, oinfo.last_update);
     EXPECT_EQ(last_complete, oinfo.last_complete);
 
+    missing.may_include_deletes = false;
     proc_replica_log(t, oinfo, olog, omissing, from);
 
     EXPECT_TRUE(t.empty());
@@ -1406,6 +1544,7 @@ TEST_F(PGLogTest, proc_replica_log) {
     EXPECT_EQ(olog.head, oinfo.last_update);
     EXPECT_EQ(olog.head, oinfo.last_complete);
 
+    missing.may_include_deletes = false;
     proc_replica_log(t, oinfo, olog, omissing, from);
 
     EXPECT_TRUE(t.empty());
@@ -1510,6 +1649,7 @@ TEST_F(PGLogTest, proc_replica_log) {
     EXPECT_EQ(olog.head, oinfo.last_update);
     EXPECT_EQ(olog.head, oinfo.last_complete);
 
+    missing.may_include_deletes = false;
     proc_replica_log(t, oinfo, olog, omissing, from);
 
     EXPECT_TRUE(t.empty());
@@ -1599,6 +1739,7 @@ TEST_F(PGLogTest, proc_replica_log) {
     EXPECT_EQ(olog.head, oinfo.last_update);
     EXPECT_EQ(olog.head, oinfo.last_complete);
 
+    missing.may_include_deletes = false;
     proc_replica_log(t, oinfo, olog, omissing, from);
 
     EXPECT_TRUE(t.empty());
@@ -1691,6 +1832,7 @@ TEST_F(PGLogTest, proc_replica_log) {
     EXPECT_EQ(olog.head, oinfo.last_update);
     EXPECT_EQ(olog.head, oinfo.last_complete);
 
+    missing.may_include_deletes = false;
     proc_replica_log(t, oinfo, olog, omissing, from);
 
     EXPECT_TRUE(t.empty());
@@ -1787,6 +1929,7 @@ TEST_F(PGLogTest, proc_replica_log) {
     EXPECT_EQ(olog.head, oinfo.last_update);
     EXPECT_EQ(olog.head, oinfo.last_complete);
 
+    missing.may_include_deletes = false;
     proc_replica_log(t, oinfo, olog, omissing, from);
 
     EXPECT_TRUE(t.empty());
@@ -1905,6 +2048,20 @@ TEST_F(PGLogTest, merge_log_8) {
 
   t.init.add(mk_obj(1), mk_evt(10, 100), mk_evt(8, 80), false);
   t.final.add(mk_obj(1), mk_evt(11, 101), mk_evt(8, 80), true);
+
+  t.setup();
+  run_test_case(t);
+}
+
+TEST_F(PGLogTest, merge_log_9) {
+  TestCase t;
+  t.base.push_back(mk_ple_mod_rb(mk_obj(1), mk_evt(10, 100), mk_evt(8, 80)));
+
+  t.auth.push_back(mk_ple_dt(mk_obj(1), mk_evt(11, 101), mk_evt(10, 100)));
+
+  t.init.add(mk_obj(1), mk_evt(10, 100), mk_evt(8, 80), false);
+  t.toremove.insert(mk_obj(1));
+  t.deletes_during_peering = true;
 
   t.setup();
   run_test_case(t);
