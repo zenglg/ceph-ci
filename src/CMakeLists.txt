@@ -890,11 +890,6 @@ add_subdirectory(compressor)
 
 add_subdirectory(tools)
 
-# to generate config header
-add_executable(
-  generate_option_header
-  common/generate_option_header.cc)
-
 # dmClock (after gmock)
 
 add_subdirectory(dmclock/src)
