@@ -1998,6 +1998,14 @@ bool OSDMonitor::preprocess_boot(MonOpRequestRef op)
     goto ignore;
   }
 
+  if (osdmap.test_flag(CEPH_OSDMAP_RECOVERY_DELETES) &&
+      !(m->osd_features & CEPH_FEATURE_OSD_RECOVERY_DELETES)) {
+    mon->clog->info() << "disallowing boot of OSD "
+		      << m->get_orig_source_inst()
+		      << " because 'recovery_deletes' osdmap flag is set and OSD lacks the OSD_RECOVERY_DELETES feature";
+    goto ignore;
+  }
+
   if (any_of(osdmap.get_pools().begin(),
 	     osdmap.get_pools().end(),
 	     [](const std::pair<int64_t,pg_pool_t>& pool)
@@ -6371,6 +6379,14 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
       } else {
 	ss << "not all up OSDs have OSD_BITWISE_HOBJ_SORT feature";
 	err = -EPERM;
+      }
+    } else if (key == "recovery_deletes") {
+      if (osdmap.get_up_osd_features() & CEPH_FEATURE_OSD_RECOVERY_DELETES) {
+	return prepare_set_flag(op, CEPH_OSDMAP_RECOVERY_DELETES);
+      } else {
+	ss << "not all up OSDs have OSD_RECOVERY_DELETES feature";
+	err = -EPERM;
+	goto reply;
       }
     } else if (key == "require_jewel_osds") {
       if (osdmap.get_up_osd_features() & CEPH_FEATURE_SERVER_JEWEL) {
