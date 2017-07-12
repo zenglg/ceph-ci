@@ -367,8 +367,9 @@ class Filesystem(MDSCluster):
 
         self.name = name
         self.id = None
-        self.name = None
         self.metadata_pool_name = None
+        self.metadata_overlay = False
+        self.data_pool_name = None
         self.data_pools = None
 
         client_list = list(misc.all_roles_of_type(self._ctx.cluster, 'client'))
@@ -444,7 +445,10 @@ class Filesystem(MDSCluster):
             self.name = "cephfs"
         if self.metadata_pool_name is None:
             self.metadata_pool_name = "{0}_metadata".format(self.name)
-        data_pool_name = "{0}_data".format(self.name)
+        if self.data_pool_name is None:
+            data_pool_name = "{0}_data".format(self.name)
+        else:
+            data_pool_name = self.data_pool_name
 
         log.info("Creating filesystem '{0}'".format(self.name))
 
@@ -452,10 +456,16 @@ class Filesystem(MDSCluster):
 
         self.mon_manager.raw_cluster_cmd('osd', 'pool', 'create',
                                          self.metadata_pool_name, pgs_per_fs_pool.__str__())
-        self.mon_manager.raw_cluster_cmd('osd', 'pool', 'create',
-                                         data_pool_name, pgs_per_fs_pool.__str__())
-        self.mon_manager.raw_cluster_cmd('fs', 'new',
-                                         self.name, self.metadata_pool_name, data_pool_name)
+
+        if self.metadata_overlay:
+            self.mon_manager.raw_cluster_cmd('fs', 'new',
+                                             self.name, self.metadata_pool_name, data_pool_name,
+                                             '--allow-dangerous-metadata-overlay')
+        else:
+            self.mon_manager.raw_cluster_cmd('osd', 'pool', 'create',
+                                             data_pool_name, pgs_per_fs_pool.__str__())
+            self.mon_manager.raw_cluster_cmd('fs', 'new',
+                                             self.name, self.metadata_pool_name, data_pool_name)
         # Turn off spurious standby count warnings from modifying max_mds in tests.
         try:
             self.mon_manager.raw_cluster_cmd('fs', 'set', self.name, 'standby_count_wanted', '0')
@@ -554,6 +564,11 @@ class Filesystem(MDSCluster):
 
     def get_metadata_pool_name(self):
         return self.metadata_pool_name
+
+    def set_data_pool_name(self, name):
+        if self.fscid is not None:
+            raise RuntimeError("can't set filesystem name if its fscid is set")
+        self.data_pool_name = name
 
     def get_namespace_id(self):
         return self.id
