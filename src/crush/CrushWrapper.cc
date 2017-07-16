@@ -1906,6 +1906,11 @@ void CrushWrapper::decode(bufferlist::iterator& blp)
     crush->buckets = (crush_bucket**)calloc(1, crush->max_buckets * sizeof(crush_bucket*));
     for (int i=0; i<crush->max_buckets; i++) {
       decode_crush_bucket(&crush->buckets[i], blp);
+      if (crush->buckets[i] &&
+	  crush->buckets[i]->weight == 0) {
+	crush_destroy_bucket(crush->buckets[i]);
+	crush->buckets[i] = 0;
+      }
     }
 
     // rules
@@ -1964,7 +1969,7 @@ void CrushWrapper::decode(bufferlist::iterator& blp)
       ::decode(class_bucket, blp);
       cleanup_classes();
     }
-    if (false && !blp.end()) {
+    if (!blp.end()) {
       __u32 choose_args_size;
       ::decode(choose_args_size, blp);
       for (__u32 i = 0; i < choose_args_size; i++) {
