@@ -5455,6 +5455,14 @@ std::vector<Option> mds_client_options = {
   .set_default(true)
   .set_description(""),
 
+  Option("min_caps_per_client", Option::TYPE_INT, Option::LEVEL_ADVANCED)
+  .set_default(100)
+  .set_description(""),
+
+  Option("max_ratio_caps_per_client", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
+  .set_default(.8)
+  .set_description(""),
+
   Option("fuse_use_invalidate_cb", Option::TYPE_BOOL, Option::LEVEL_ADVANCED)
   .set_default(true)
   .set_description(""),
