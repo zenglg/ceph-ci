@@ -43,7 +43,12 @@ class TestClientLimits(CephFSTestCase):
         open_files = 200
 
         self.set_conf('mds', 'mds cache size', cache_size)
-        self.fs.mds_fail_restart()
+        min_caps_per_client = CAP_RECALL_MIN
+	max_caps_per_client = int(cache_size * CAP_RECALL_RATIO)
+	if max_caps_per_client < min_caps_per_client
+	    max_caps_per_client = min_caps_per_client + 1 
+	
+	self.fs.mds_fail_restart()
         self.fs.wait_for_daemons()
 
         mount_a_client_id = self.mount_a.get_global_id()
@@ -84,9 +89,9 @@ class TestClientLimits(CephFSTestCase):
         # which depend on the cache size and overall ratio
         self.wait_until_equal(
             lambda: self.get_session(mount_a_client_id)['num_caps'],
-            int(cache_size * 0.8),
+            max_caps_per_client,
             timeout=600,
-            reject_fn=lambda x: x < int(cache_size*.8))
+            reject_fn=lambda x: x < max_caps_per_client)
 
     @needs_trimming
     def test_client_pin_root(self):
