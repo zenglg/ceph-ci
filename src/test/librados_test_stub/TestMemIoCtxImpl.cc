@@ -193,6 +193,9 @@ int TestMemIoCtxImpl::omap_get_vals2(const std::string& oid,
   RWLock::RLocker l(file->lock);
   TestMemCluster::FileOMaps::iterator o_it = m_pool->file_omaps.find(oid);
   if (o_it == m_pool->file_omaps.end()) {
+    if (pmore) {
+      *pmore = false;
+    }
     return 0;
   }
 
