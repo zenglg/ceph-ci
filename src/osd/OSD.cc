@@ -2633,12 +2633,14 @@ int OSD::init()
     }
   }
 
-  r = update_crush_device_class();
-  if (r < 0) {
-    derr << __func__ <<" unable to update_crush_device_class: "
-         << cpp_strerror(r) << dendl;
-    osd_lock.Lock();
-    goto monout;
+  if (osdmap.require_osd_release >= CEPH_RELEASE_LUMINOUS) {
+    r = update_crush_device_class();
+    if (r < 0) {
+      derr << __func__ <<" unable to update_crush_device_class: "
+	   << cpp_strerror(r) << dendl;
+      osd_lock.Lock();
+      goto monout;
+    }
   }
 
   r = update_crush_location();
