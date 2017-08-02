@@ -1085,8 +1085,14 @@ void Server::recover_filelocks(CInode *in, bufferlist locks, int64_t client)
  */
 void Server::recall_client_state(float ratio)
 {
-  int max_caps_per_client = (int)(g_conf->mds_cache_size * .8);
-  int min_caps_per_client = 100;
+  int max_caps_per_client = (int)(g_conf->get_val<int>("mds_cache_size") * 
+                            g_conf->get_val<float>("max_ratio_caps_per_client"));
+  int min_caps_per_client = g_conf->get_val<int>("min_caps_per_client");
+  if (max_caps_per_client < min_caps_per_client) {
+    dout(0) << "max_caps_per_client " << max_caps_per_client << "<" 
+            << "min_caps_per_client " << min_caps_per_client << dendl;
+    max_caps_per_client = min_caps_per_client + 1;
+  }
 
   dout(10) << "recall_client_state " << ratio
 	   << ", caps per client " << min_caps_per_client << "-" << max_caps_per_client
