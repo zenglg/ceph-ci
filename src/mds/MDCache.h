@@ -21,6 +21,8 @@
 #include "include/filepath.h"
 #include "include/elist.h"
 
+#include "common/perf_counters.h"
+
 #include "osdc/Filer.h"
 #include "CInode.h"
 #include "CDentry.h"
@@ -97,6 +99,13 @@ enum {
   l_mdc_recovery_started,
   // How many inodes ever completed size recovery
   l_mdc_recovery_completed,
+
+  l_mdss_ireq_enqueue_scrub,
+  l_mdss_ireq_exportdir,
+  l_mdss_ireq_flush,
+  l_mdss_ireq_fragmentdir,
+  l_mdss_ireq_fragstats,
+  l_mdss_ireq_inodestats,
 
   l_mdc_last,
 };
