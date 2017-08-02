@@ -5609,8 +5609,8 @@ std::vector<Option> mds_client_options = {
   .set_description(""),
 
   Option("fuse_big_writes", Option::TYPE_BOOL, Option::LEVEL_ADVANCED)
-  .set_default(true)
-  .set_description(""),
+  .set_default(false)
+  .set_description("big_writes is deprecated in libfuse 3.0.0"),
 
   Option("fuse_atomic_o_trunc", Option::TYPE_BOOL, Option::LEVEL_ADVANCED)
   .set_default(true)
