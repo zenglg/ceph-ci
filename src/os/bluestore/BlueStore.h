@@ -1647,7 +1647,7 @@ public:
 
     boost::intrusive::list_member_hook<> deferred_osr_queue_item;
 
-    DeferredBatch *deferred_running = nullptr;
+    deque<DeferredBatch*> deferred_running;
     DeferredBatch *deferred_pending = nullptr;
 
     Sequencer *parent;
@@ -2035,7 +2035,7 @@ private:
 
   bluestore_deferred_op_t *_get_deferred_op(TransContext *txc, OnodeRef o);
   void _deferred_queue(TransContext *txc);
-  void deferred_try_submit();
+  void deferred_submit_all();
   void _deferred_submit_unlock(OpSequencer *osr);
   void _deferred_aio_finish(OpSequencer *osr);
   int _deferred_replay();
