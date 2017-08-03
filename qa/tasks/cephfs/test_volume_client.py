@@ -235,8 +235,10 @@ vc.disconnect()
 
             # global: df should see all the writes (data + other).  This is a >
             # rather than a == because the global spaced used includes all pools
-            self.assertGreater(self.mount_a.df()['used'],
-                               (data_bin_mb + other_bin_mb) * 1024 * 1024)
+            self.wait_until_equal(lambda: self.mount_a.df()['used'],
+                                  data_bin_mb * 1024 * 1024, timeout=10)
+            self.assertEqual(self.mount_a.df()['used'],
+                             data_bin_mb * 1024 * 1024)
 
             # Hack: do a metadata IO to kick rstats
             self.mounts[2].run_shell(["touch", "foo"])
