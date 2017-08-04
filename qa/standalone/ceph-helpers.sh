@@ -158,11 +158,30 @@ function teardown() {
         && [ $(stat -f -c '%T' .) == "btrfs" ]; then
         __teardown_btrfs $dir
     fi
-    if [ "$dumplogs" = "1" ]; then
+    local cores="no"
+    # Local we start with core and teuthology ends with core
+    if ls $(dirname $(sysctl -n kernel.core_pattern)) | grep -q '^core\|core$' ; then
+        cores="yes"
+        if [ -n "$LOCALRUN" ]; then
+	    mkdir /tmp/cores.$$ 2> /dev/null || true
+	    for i in $(ls $(dirname $(sysctl -n kernel.core_pattern)) | grep '^core\|core$'); do
+		mv $i /tmp/cores.$$
+	    done
+        fi
+    fi
+    if [ "$cores" = "yes" -o "$dumplogs" = "1" ]; then
         display_logs $dir
     fi
     rm -fr $dir
     rm -rf $(get_asok_dir)
+    if [ "$cores" = "yes" ]; then
+        echo "ERROR: Failure due to cores found"
+        if [ -n "$LOCALRUN" ]; then
+	    echo "Find saved core files in /tmp/cores.$$"
+        fi
+        return 1
+    fi
+    return 0
 }
 
 function __teardown_btrfs() {

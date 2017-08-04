@@ -41,6 +41,9 @@ location="../qa/standalone"
 count=0
 errors=0
 userargs=""
+precore="$(sysctl -n kernel.core_pattern)"
+sudo sysctl -w kernel.core_pattern=core.%e.%p.%t
+ulimit -c unlimited
 for f in $(cd $location ; find . -perm $exec_mode -type f)
 do
     f=$(echo $f | sed 's/\.\///')
@@ -82,12 +85,14 @@ do
         if ! PATH=$PATH:bin \
 	    CEPH_ROOT=.. \
 	    CEPH_LIB=lib \
+	    LOCALRUN=yes \
 	    $cmd ; then
           echo "$f .............. FAILED"
           errors=$(expr $errors + 1)
         fi
     fi
 done
+sudo sysctl -w kernel.core_pattern=$precore
 
 if [ "$errors" != "0" ]; then
     echo "$errors TESTS FAILED, $count TOTAL TESTS"
