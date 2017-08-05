@@ -211,7 +211,7 @@ void Elector::victory()
     m->quorum = quorum;
     m->quorum_features = cluster_features;
     m->mon_features = mon_features;
-    m->sharing_bl = mon->get_local_commands_bl();
+    m->sharing_bl = mon->get_local_commands_bl(mon_features);
     mon->messenger->send_message(m, mon->monmap->get_inst(*p));
   }
 
