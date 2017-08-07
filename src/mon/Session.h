@@ -95,6 +95,19 @@ struct MonSession : public RefCountedObject {
       service, "", args,
       mask & MON_CAP_R, mask & MON_CAP_W, mask & MON_CAP_X);
   }
+
+  void dump(Formatter *f) const {
+    f->dump_unsigned("gid", global_id);
+    f->dump_stream("entity_name") << entity_name;
+    f->dump_stream("inst") << inst;
+    f->dump_unsigned("con_type", con_type);
+    f->dump_unsigned("con_features", con_features);
+    f->dump_stream("session_timeout") << session_timeout;
+    f->dump_stream("session_established") << time_established;
+    f->dump_bool("closed", closed);
+    f->dump_unsigned("auid", auid);
+    f->dump_unsigned("osd_epoch", osd_epoch);
+  }
 };
 
 
