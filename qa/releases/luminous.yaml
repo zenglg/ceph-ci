@@ -8,6 +8,13 @@ tasks:
     daemons: [mgr.x]
     wait-for-healthy: false
 - exec:
+    mon.a:
+      - sudo ceph daemon mon.a sessions
+    mon.b:
+      - sudo ceph daemon mon.b sessions
+    mon.c:
+      - sudo ceph daemon mon.c sessions
+- exec:
     osd.0:
       - ceph versions
       - ceph features
