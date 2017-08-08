@@ -702,6 +702,8 @@ OPTION(osd_op_queue, OPT_STR)
 
 OPTION(osd_op_queue_cut_off, OPT_STR) // Min priority to go to strict queue. (low, high)
 
+OPTION(osd_op_queue_allow_mclock_limit_break, OPT_BOOL)
+
 // mClock priority queue parameters for five types of ops
 OPTION(osd_op_queue_mclock_client_op_res, OPT_DOUBLE)
 OPTION(osd_op_queue_mclock_client_op_wgt, OPT_DOUBLE)

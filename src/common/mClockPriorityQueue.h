@@ -200,13 +200,14 @@ namespace ceph {
 	f->dump_int("size", size);
 	f->dump_int("num_keys", q.size());
       }
-    };
+    }; // struct SubQueue
 
     using SubQueues = std::map<priority_t, SubQueue>;
 
     SubQueues high_queue;
 
     dmc::PullPriorityQueue<K,T> queue;
+    bool queue_allows_limit_break;
 
     // when enqueue_front is called, rather than try to re-calc tags
     // to put in mClock priority queue, we'll just keep a separate
@@ -217,11 +218,11 @@ namespace ceph {
   public:
 
     mClockQueue(
-      const typename dmc::PullPriorityQueue<K,T>::ClientInfoFunc& info_func) :
-      queue(info_func, true)
-    {
-      // empty
-    }
+      const typename dmc::PullPriorityQueue<K,T>::ClientInfoFunc& info_func,
+      bool allow_limit_break = true)
+      : queue(info_func, allow_limit_break),
+	queue_allows_limit_break(allow_limit_break)
+    { /* empty */ }
 
     unsigned length() const override final {
       unsigned total = 0;
@@ -309,7 +310,13 @@ namespace ceph {
     }
 
     bool empty() const override final {
-      return queue.empty() && high_queue.empty() && queue_front.empty();
+      auto& unconst_queue = const_cast<dmc::PullPriorityQueue<K,T>&>(queue);
+      return
+	high_queue.empty()
+	&& queue_front.empty()
+	&& (queue_allows_limit_break ?
+	    queue.empty() :
+	    !unconst_queue.has_ready_request());
     }
 
     T dequeue() override final {

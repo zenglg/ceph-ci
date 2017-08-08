@@ -88,7 +88,9 @@ namespace ceph {
   mClockOpClassQueue::pg_queueable_visitor;
 
   mClockOpClassQueue::mClockOpClassQueue(CephContext *cct) :
-    queue(&mClockOpClassQueue::op_class_client_info_f)
+    queue(&mClockOpClassQueue::op_class_client_info_f,
+//	  cct->_conf->get_val("osd_op_queue_allow_mclock_limit_break")
+	  cct->_conf->osd_op_queue_allow_mclock_limit_break)
   {
     // manage the singleton
     if (!mclock_op_tags) {
