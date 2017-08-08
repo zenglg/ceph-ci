@@ -33,7 +33,7 @@ function TEST_without_pidfile() {
         --mkfs \
         --mon-data=$data \
         --run-dir=$dir || return 1
-    sleep 1
+    sleep 2
     expect_failure $dir "ignore empty --pid-file" ceph-mon \
         -f \
         --log-to-stderr \
@@ -50,11 +50,11 @@ function TEST_pidfile() {
 
     # no daemon can use a pidfile that is owned by another daemon
     run_mon $dir a || return 1
-    sleep 1
+    sleep 2
     run_mon $dir a --log-to-stderr -f 2>&1 | grep "failed to lock pidfile" || return 1
 
     run_osd $dir 0 || return 1
-    sleep 1
+    sleep 2
     activate_osd $dir 0 --log-to-stderr -f 2>&1 | grep "failed to lock pidfile" || return 1
 
     # when a daemon shutdown, it will not unlink a path different from
