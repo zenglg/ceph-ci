@@ -352,7 +352,23 @@ int rgw_log_op(RGWRados *store, RGWREST* const rest, struct req_state *s,
     set_param_str(s, "REMOTE_ADDR", entry.remote_addr);
   set_param_str(s, "HTTP_USER_AGENT", entry.user_agent);
   set_param_str(s, "HTTP_REFERRER", entry.referrer);
-  set_param_str(s, "REQUEST_URI", entry.uri);
+
+  std::string uri(s->info.env->get("REQUEST_METHOD"));
+  uri.append(" ");
+
+  uri.append(s->info.env->get("REQUEST_URI"));
+  if(s->info.env->get("QUERY_STRING") &&
+     (strlen(s->info.env->get("QUERY_STRING")) != 0)) {
+    uri.append("?");
+    uri.append(s->info.env->get("QUERY_STRING"));
+  }
+
+  uri.append(" ");
+  uri.append("HTTP/");
+  uri.append(s->info.env->get("HTTP_VERSION"));
+
+  entry.uri = uri;
+
   set_param_str(s, "REQUEST_METHOD", entry.op);
 
   /* custom header logging */
