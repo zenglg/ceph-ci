@@ -1704,8 +1704,12 @@ ostream& operator<<(ostream& out, const BlueStore::Blob& b)
     out << " spanning " << b.id;
   }
   out << " " << b.get_blob() << " " << b.get_blob_use_tracker()
-      << " " << *b.shared_blob
-      << ")";
+  if (b.shared_blob) {
+    out << " " << *b.shared_blob;
+  } else {
+    out << " (shared_blob=NULL)";
+  }
+  out << ")";
   return out;
 }
 
