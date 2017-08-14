@@ -357,7 +357,8 @@ int rgw_log_op(RGWRados *store, RGWREST* const rest, struct req_state *s,
   else
     set_param_str(s, "HTTP_REFERER", entry.referrer);
   set_param_str(s, "REQUEST_URI", entry.uri);
-  set_param_str(s, "REQUEST_METHOD", entry.op);
+
+  entry.op = op_name;
 
   /* custom header logging */
   if (rest) {
