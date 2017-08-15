@@ -5268,7 +5268,7 @@ out:
 
 int Client::may_open(Inode *in, int flags, const UserPerm& perms)
 {
-  ldout(cct, 20) << __func__ << *in << "; " << perms << dendl;
+  ldout(cct, 20) << __func__ << " " << *in << "; " << perms << dendl;
   unsigned want = 0;
 
   if ((flags & O_ACCMODE) == O_WRONLY)
