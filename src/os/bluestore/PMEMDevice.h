@@ -60,6 +60,11 @@ public:
   int invalidate_cache(uint64_t off, uint64_t len) override;
   int open(const std::string &path) override;
   void close() override;
+  bool is_valid_io(uint64_t off, uint64_t len) override {
+    return len > 0 && \
+           off < size && \
+           off + len <= size;
+  }
 };
 
 #endif
