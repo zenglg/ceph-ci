@@ -918,14 +918,9 @@ int pg_string_state(const std::string& state)
 string eversion_t::get_key_name() const
 {
   char key[32];
-  // Below is equivalent of sprintf("%010u.%020llu");
-  key[31] = 0;
-  ritoa<uint64_t, 10, 20>(version, key + 31);
-  key[10] = '.';
-  ritoa<uint32_t, 10, 10>(epoch, key + 10);
+  get_key_name(key);
   return string(key);
 }
-
 
 // -- pool_snap_info_t --
 void pool_snap_info_t::dump(Formatter *f) const
@@ -4125,9 +4120,13 @@ ostream& operator<<(ostream& out, const pg_log_entry_t& e)
 
 // -- pg_log_dup_t --
 
-string pg_log_dup_t::get_key_name() const
+std::string pg_log_dup_t::get_key_name() const
 {
-  return "dup_" + version.get_key_name();
+  alignas(4) static char prefix[] = { 'd', 'u', 'p', '_' };
+  alignas(4) char key[36];
+  memcpy(key, prefix, 4);
+  version.get_key_name(key + 4);
+  return std::string(key);
 }
 
 void pg_log_dup_t::encode(bufferlist &bl) const
