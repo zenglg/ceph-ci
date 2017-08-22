@@ -1168,7 +1168,8 @@ void PG::calc_ec_acting(
     if (acting.size() > (unsigned)i && acting[i] != CRUSH_ITEM_NONE &&
 	!all_info.find(pg_shard_t(acting[i], shard_id_t(i)))->second.is_incomplete() &&
 	all_info.find(pg_shard_t(acting[i], shard_id_t(i)))->second.last_update >=
-	auth_log_shard->second.log_tail) {
+	auth_log_shard->second.log_tail &&
+        std::find(want.begin(), want.end(), acting[i]) == want.end()) {
       ss << " selecting acting[i]: " << pg_shard_t(acting[i], shard_id_t(i)) << std::endl;
       want[i] = acting[i];
       ++usable;
@@ -1177,6 +1178,10 @@ void PG::calc_ec_acting(
 	   j != all_info_by_shard[shard_id_t(i)].end();
 	   ++j) {
 	assert(j->shard == i);
+        if (j->osd == CRUSH_ITEM_NONE ||
+            std::find(want.begin(), want.end(), j->osd) != want.end()) {
+          continue;
+        }
 	if (!all_info.find(*j)->second.is_incomplete() &&
 	    all_info.find(*j)->second.last_update >=
 	    auth_log_shard->second.log_tail) {
