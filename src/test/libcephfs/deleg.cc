@@ -113,6 +113,7 @@ static void simple_deleg_test(struct ceph_mount_info *cmount, struct ceph_mount_
   breaker4.join();
 
   ASSERT_EQ(ceph_ll_close(cmount, fh), 0);
+  ASSERT_EQ(ceph_ll_unlink(cmount, root, filename, perms), 0);
 }
 
 TEST(LibCephFS, DelegMultiClient) {
